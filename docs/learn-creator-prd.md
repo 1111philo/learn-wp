@@ -2,7 +2,7 @@
 
 ## WordPress Plugin for AI-Powered Course Content Creation
 
-**Version:** 0.4.0-draft
+**Version:** 0.5.0-draft
 **Date:** 2026-03-09
 **Status:** Draft — awaiting review
 
@@ -10,9 +10,11 @@
 
 ## 1. Overview
 
-**1111 Learn Creator** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A six-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
+**1111 Learn Creator** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A seven-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
 
-Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner accumulates across the course. The learner isn't just "completing exercises" — they're building a portfolio that proves what they can do. This follows the single-work-product pattern proven in 1111 Learn (Chrome extension), where all activities contribute to one persistent document that grows from first activity to final deliverable.
+Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner builds **within WordPress itself**. The learner isn't just "completing exercises" — they're creating real WordPress content (pages, posts, even entire sites) that proves what they can do. The plugin runs on a **WordPress Multisite** network: the administrator creates courses on the main site, and each learner gets their own subsite where they build their portfolio work product. An Activity Assessment Agent evaluates the learner's WordPress content against the generated rubrics and mastery criteria.
+
+This follows the single-work-product pattern proven in 1111 Learn (Chrome extension), where all activities contribute to one persistent artifact that grows from first activity to final deliverable — but instead of an external tool like Google Docs, the work product lives inside WordPress where it can be assessed, displayed, and shared natively.
 
 ### 1.1 Lineage
 
@@ -21,22 +23,24 @@ This plugin adapts proven agent patterns from two existing 1111 projects:
 - **[1111 Learn](https://github.com/1111philo/learn-extension)** (Chrome extension) — Four-agent architecture: Course Creation → Activity Creation → Activity Assessment → Learner Profile. Prompts stored as Markdown files. Output validated deterministically before reaching the user. Retry-once on validation failure.
 - **[1111 School](https://github.com/1111philo/learn)** (full-stack web app) — Seven PydanticAI agents with backward design methodology: Course Describer → Lesson Planner → Lesson Writer → Activity Creator → Activity Reviewer → Assessment Creator → Assessment Reviewer. Narrative threading across lessons. Scope control to prevent objective bleed. On-demand lesson generation.
 
-The WordPress plugin takes the best of both: the narrative threading, backward design, and assessment pipeline from School; the Markdown-file prompt editability, portfolio work-product model, activity type progression, and assessment scoring from Learn; expanded with gamification mechanics that make every activity feel like building a portfolio piece.
+The WordPress plugin takes the best of both: the narrative threading, backward design, and assessment pipeline from School; the Markdown-file prompt editability, portfolio work-product model, activity type progression, and assessment scoring from Learn; expanded with gamification mechanics, WordPress-native portfolio creation on a Multisite network, and an Activity Assessment Agent that evaluates learner-submitted WordPress content against generated rubrics.
 
 ---
 
 ## 2. Goals
 
 1. Let a WordPress administrator create a complete, structured course from three inputs: title, description, and learning objectives.
-2. Generate pedagogically sound lesson content, activities, and assessments using a six-agent pipeline, with prompts stored as editable Markdown files so AI agents can iterate on output quality through telemetry-driven PRs.
+2. Generate pedagogically sound lesson content, activities, and assessments using a seven-agent pipeline, with prompts stored as editable Markdown files so AI agents can iterate on output quality through telemetry-driven PRs.
 3. Use backward design (define mastery → design evidence → build the path) to ensure lessons, activities, and assessments are aligned to objectives.
 4. Thread a narrative arc across all lessons so the course reads as a coherent journey, not disconnected topics.
 5. Produce standard WordPress posts (custom post type `learn`) organized under a `course` taxonomy — compatible with any theme, page builder, or LMS plugin.
 6. Keep the plugin self-contained: no build step, no JavaScript framework, no external dependencies beyond the Anthropic API.
 7. Meet WCAG 2.1 AA accessibility standards in all admin UI and generated lesson content.
 8. Continuously self-improve through telemetry: collect anonymous usage data from real course generations, feed it back to learn-service, and use it to automatically create PRs that refine agent prompts — so every generation makes the next one better, without human intervention in the feedback loop.
-9. Make every activity and assessment a **portfolio artifact** — learners accumulate concrete, demonstrable work products across the course that prove what they can do.
+9. Make every activity and assessment a **portfolio artifact** — learners build concrete, demonstrable work products **within WordPress** (pages, posts, sites) that prove what they can do.
 10. Use **gamification mechanics** (progressive activity types, mastery scoring, achievement milestones, streaks) to sustain engagement and make learning feel like building toward a tangible accomplishment.
+11. Run on a **WordPress Multisite** network where each learner gets their own subsite to create portfolio content — the plugin assesses that content using an AI-powered Activity Assessment Agent.
+12. **Assess learner submissions** automatically: the Activity Assessment Agent reads the learner's WordPress content and evaluates it against the generated rubric and mastery criteria, providing scores, feedback, and advancement recommendations.
 
 ---
 
@@ -55,9 +59,10 @@ The WordPress plugin takes the best of both: the narrative threading, backward d
 - Expects a clear narrative arc: each lesson builds on the last and prepares for the next
 - Needs activities that are challenging but achievable given the lesson content
 - May have accessibility needs (screen readers, keyboard navigation, low vision) — generated content must be consumable by all
-- **Does not interact with the plugin directly** — the learner experience is mediated entirely through WordPress posts and whatever theme or companion plugin (e.g., 1111 Learn Administrator) presents them
+- **Creates portfolio content within WordPress** — each learner has their own subsite on the Multisite network where they build their work product by creating pages, posts, or other WordPress content as directed by activities
+- Submits their WordPress content for assessment — the Activity Assessment Agent reads and evaluates what they've built
 
-> Although the learner never touches the plugin, every design decision — backward design, narrative threading, mastery-aligned activities, accessible markup — exists to serve this persona. The learner is the reason the plugin exists.
+> The learner is an active participant in WordPress, not just a reader. They create real content on their own subsite — pages, posts, custom post types — and that content is their portfolio. Every design decision exists to serve this persona.
 
 ### 3.3 Developer (PR Reviewer)
 - Reviews agent-generated PRs that improve prompts based on telemetry data
@@ -86,9 +91,9 @@ All generated posts (`learn` CPT) are authored by this user. The `post_author` i
 
 ## 4. Architecture
 
-### 4.1 Six-Agent Pipeline
+### 4.1 Seven-Agent Pipeline
 
-The generation pipeline uses six sequential agents. Each agent's output feeds into the next. This extends the proven four-agent content pipeline with two assessment agents from 1111 School, plus the portfolio work-product model and activity type progression from 1111 Learn (Chrome extension).
+The generation pipeline uses seven agents. The first six are sequential content-generation agents; the seventh (Activity Assessment Agent) runs on-demand when a learner submits their WordPress content for evaluation. This extends the proven four-agent content pipeline with assessment agents from 1111 School, plus the portfolio work-product model, activity type progression, and activity assessment from 1111 Learn (Chrome extension).
 
 ```
 Admin Input (title, description, objectives)
@@ -157,12 +162,13 @@ Admin Input (title, description, objectives)
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
-│  WordPress Posts (CPT: learn)                     │
+│  WordPress Posts (CPT: learn) — Main Site         │
 │  Author: 1111 Agent user (content locked)         │
 │  Taxonomies: course + lesson_group                │
 │                                                   │
 │  Course: "Web Accessibility Fundamentals"         │
 │  Work Product: "Accessibility Audit Report"       │
+│  (built as WordPress pages on learner subsites)   │
 │    ├── Lesson Group: "Seeing the Barriers"        │
 │    │   ├── Lesson 1a [explore] + Activity (draft) │
 │    │   └── Lesson 1b [apply] + Activity (draft)   │
@@ -175,19 +181,34 @@ Admin Input (title, description, objectives)
 │                                                   │
 │  Admin provides FEEDBACK → triggers regeneration  │
 │  Admin CANNOT directly edit post content          │
+└─────────────────────┬───────────────────────────┘
+                      │
+        ┌─────────────┘
+        │  Learner completes activities on their subsite
+        │  (creates pages, posts, WordPress content)
+        ▼
+┌─────────────────────────────────────────────────┐
+│  Agent 7: Activity Assessment (on-demand)        │
+│  (default model)                                  │
+│  Reads learner's WordPress content from subsite   │
+│  Evaluates against rubric + mastery criteria      │
+│  Output: score 0.0–1.0, recommendation,           │
+│          strengths, improvements, portfolio check  │
+│  ◄── Learner can resubmit after revision         │
 └───────────────────────────────────────────────────┘
 ```
 
-### 4.2 Why Six Agents
+### 4.2 Why Seven Agents
 
-The original PRD used two agents (plan + write). After studying the 1111 School pipeline (seven agents) and the 1111 Learn extension (four agents with assessment), six agents is the right number for WordPress:
+The original PRD used two agents (plan + write). After studying the 1111 School pipeline (seven agents) and the 1111 Learn extension (four agents with assessment), seven agents is the right number for WordPress:
 
-1. **Course Describer** ensures narrative coherence — lesson titles feel like chapters in the same story, not isolated topics. Also defines the course **work product** (the portfolio artifact learners build across all activities).
+1. **Course Describer** ensures narrative coherence — lesson titles feel like chapters in the same story, not isolated topics. Also defines the course **work product** (the portfolio artifact learners build within WordPress across all activities).
 2. **Lesson Planner** uses backward design — defining mastery criteria first, then designing the activity, then planning the lesson content. Assigns **activity types** (`explore` → `apply` → `create`) following the learn-extension's progression model.
 3. **Lesson Writer** focuses solely on writing engaging content from a detailed plan, rather than simultaneously planning and writing.
-4. **Activity Creator** designs activities as **portfolio contributions** anchored to specific mastery criteria, with gamification mechanics (XP, milestones). Each activity adds to the single work product.
+4. **Activity Creator** designs activities as **portfolio contributions** anchored to specific mastery criteria, with gamification mechanics (XP, milestones). Each activity directs the learner to create WordPress content (pages, posts) on their subsite.
 5. **Activity Reviewer** (from School) quality-checks each activity against mastery criteria and rubric alignment before it reaches the admin. This automated review step catches misalignment that would otherwise require admin feedback.
 6. **Assessment Creator** (from School) produces a summative, portfolio-based final assessment that spans all objectives — "finalize and present your work product." This closes the backward design loop: the assessment is the ultimate evidence of mastery.
+7. **Activity Assessment Agent** (from Learn extension) evaluates the learner's submitted WordPress content against the activity's rubric and mastery criteria. Runs on-demand when a learner submits their work. Returns a score (0.0–1.0), recommendation (advance/revise/continue), strengths, and improvements. This is the grading engine that makes the portfolio model work — without it, rubrics are aspirational; with it, learners get real feedback on what they've built.
 
 ### 4.3 Agent Design Principles (from 1111 School)
 
@@ -197,7 +218,7 @@ These principles are proven in production and must carry forward:
 - **Narrative threading:** The Course Describer identifies the PRIMARY objective and shows how others support it. Every lesson title and summary feels like a chapter in the same story.
 - **Scope control:** Each lesson covers ONLY its assigned objective. The planner receives the full objective list but is explicitly told not to teach other objectives. This prevents scope creep and repetition.
 - **Agents are functions, not frameworks:** Each agent takes typed input, returns typed output, validates against a schema, and retries on failure. No memory across invocations, no autonomous decisions.
-- **Portfolio-first design (from Learn extension):** Every activity contributes to a single, persistent work product — the learner's portfolio artifact for the course. Activities don't exist in isolation; they build on each other. The final assessment is "finalize and present your work product." This follows the learn-extension's "Single Document Rule" — one work product per course, created in the first activity, refined through every subsequent one.
+- **Portfolio-first design (from Learn extension):** Every activity contributes to a single, persistent work product — the learner's portfolio artifact for the course, built as **WordPress content on the learner's own subsite**. Activities don't exist in isolation; they build on each other. The final assessment is "finalize and present your work product." This follows the learn-extension's "Single Document Rule" — one work product per course, created in the first activity, refined through every subsequent one — but the work product lives inside WordPress where the Activity Assessment Agent can read and evaluate it natively.
 - **Activity type progression (from Learn extension):** Activities follow a four-type progression: `explore` (research and discover) → `apply` (practice a skill) → `create` (build and refine) → `final` (polish and deliver). This progression mirrors the learn-extension's activity types and ensures learners move from understanding to mastery to demonstration.
 - **Gamification through mastery, not gimmicks:** XP values, mastery scores, achievement milestones, and streaks are designed to reflect genuine learning progress. An `explore` activity earns less XP than a `create` activity because it requires less synthesis. Milestones mark real accomplishments ("First draft complete," "All objectives covered"). This is gamification in service of pedagogy, not engagement hacking.
 - **Prompts are data, not code:** System prompts live in Markdown files. Dynamic context (course data, objectives) goes in the user message. Changing agent behavior never requires touching PHP — an AI agent can propose prompt improvements as a PR diff against `prompts/*.md`.
@@ -257,6 +278,71 @@ The lesson group tag is where the admin provides **lesson plan feedback** — th
 | `_1111_plan_feedback` | `string` | Admin's feedback on the lesson plan (cleared after regeneration) |
 | `_1111_plan_version` | `int` | Incremented on each regeneration |
 
+### 4.7 Multisite Architecture
+
+The plugin requires a **WordPress Multisite** network. Course content (lessons, activities, assessments) lives on the main site. Each learner gets their own subsite where they create their portfolio work product as real WordPress content.
+
+#### 4.7.1 Why Multisite?
+
+The core design goal is that learners build portfolio items **within WordPress itself** — creating pages, posts, or even full sites. This requires giving each learner their own WordPress space where they can:
+
+- Create and edit pages and posts as directed by activity instructions
+- Build a portfolio work product that persists across the entire course
+- Have their content read and assessed by the Activity Assessment Agent
+- Own a shareable URL to their finished portfolio
+
+A Multisite network is the natural WordPress solution: the administrator manages courses on the main site, and each learner's subsite is both their workspace and their portfolio.
+
+#### 4.7.2 Network Structure
+
+```
+Multisite Network
+├── Main Site (admin domain)
+│   ├── learn CPT (lessons, activities, assessments)
+│   ├── course taxonomy
+│   ├── lesson_group taxonomy
+│   ├── 1111 Learn Creator admin UI
+│   └── Course content is generated and managed here
+│
+├── Learner Subsite: learner-jane.example.com
+│   ├── Pages/posts created by the learner as portfolio work
+│   ├── Work product content assessed by Activity Assessment Agent
+│   └── Shareable portfolio URL
+│
+├── Learner Subsite: learner-alex.example.com
+│   └── ...
+└── ...
+```
+
+#### 4.7.3 Subsite Provisioning
+
+When a learner is enrolled in a course (via the companion administrator plugin or manual assignment), a subsite is created for them if one doesn't already exist:
+
+- **Subdomain pattern:** `{username}.{network-domain}` (or subdirectory: `{network-domain}/{username}/`)
+- **Default theme:** Inherited from the network's default, or a specific portfolio theme if configured
+- **Capabilities:** The learner has the `editor` role on their own subsite — they can create, edit, and publish pages and posts
+- **Cross-site access:** The Activity Assessment Agent (running on the main site) reads learner content from subsites using `switch_to_blog()` / `restore_current_blog()` — standard WordPress Multisite API
+
+#### 4.7.4 Work Product as WordPress Content
+
+Instead of external tools (Google Docs, Notion, etc.), the work product is WordPress content on the learner's subsite:
+
+| Activity instruction | WordPress equivalent |
+|---------------------|---------------------|
+| "Create a new document called 'Accessibility Audit Report'" | Create a new page titled "Accessibility Audit Report" |
+| "Add a section about visual barriers" | Edit the page, add a new heading and content |
+| "Include screenshots of issues you found" | Upload images to the media library, insert into the page |
+| "Finalize and present your report" | Publish the page — it's now a shareable portfolio piece |
+
+The Course Describer's `work_product_tool` field is replaced by `work_product_type` — one of: `page` (a single WordPress page built across the course), `post_series` (a series of blog posts), or `site` (the entire subsite is the portfolio). Most courses will use `page`.
+
+#### 4.7.5 Plugin Activation on Multisite
+
+- The plugin is **network activated** — it runs across the entire Multisite network
+- Admin UI (course creation, settings, feedback) is only accessible on the **main site**
+- The Activity Assessment Agent can read content from any subsite in the network
+- Learner subsites do not show the 1111 Learn admin menu — they only see their own content creation tools
+
 ---
 
 ## 5. Agent Specifications
@@ -288,8 +374,8 @@ Learning objectives (3 total — produce one lesson entry for each):
 {
   "narrative_description": "You'll start by learning to see the web through the eyes of users who face accessibility barriers every day — visual, motor, cognitive, and more. With that foundation, you'll pick up the browser tools that reveal these barriers in any webpage's code. By the end, you'll be writing specific, prioritized fix recommendations that developers can act on immediately.",
   "work_product": "Accessibility Audit Report",
-  "work_product_tool": "Google Doc",
-  "work_product_description": "A professional accessibility audit report for a real website, built piece by piece across every lesson — documenting barriers found, audit methodology, and prioritized fix recommendations. This is a portfolio piece you can share with employers or clients.",
+  "work_product_type": "page",
+  "work_product_description": "A professional accessibility audit report for a real website, built as a WordPress page on your own site — documenting barriers found, audit methodology, and prioritized fix recommendations. This is a portfolio piece you can share with employers or clients by sending them the link to your published page.",
   "lessons": [
     {
       "lesson_title": "Seeing the Barriers",
@@ -314,7 +400,7 @@ Learning objectives (3 total — produce one lesson entry for each):
 - One lesson entry per objective, in the same order — never merge, skip, or reorder
 - Lesson titles must feel like chapters in the same story (foundation → application → mastery)
 - Lesson summaries describe what the learner will be able to DO, not what the lesson covers
-- **Work product (from Learn extension):** Define a single, concrete portfolio artifact that the learner builds across the entire course. `work_product` is a short name (2–4 words), `work_product_tool` is the tool (browser-based: Google Doc, Notion, CodePen, Replit, etc.), `work_product_description` is 2–3 sentences framing it as a portfolio piece the learner owns and can show to others. The work product must be achievable given the objectives — not aspirational.
+- **Work product (from Learn extension):** Define a single, concrete portfolio artifact that the learner builds **within WordPress** across the entire course. `work_product` is a short name (2–4 words), `work_product_type` is one of `page` (single WordPress page built across the course), `post_series` (a series of blog posts), or `site` (the entire subsite is the portfolio), `work_product_description` is 2–3 sentences framing it as a portfolio piece the learner owns on their own WordPress subsite and can share via URL. The work product must be achievable given the objectives — not aspirational.
 
 ### 5.2 Agent 2: Lesson Planner
 
@@ -330,7 +416,7 @@ Learning objectives (3 total — produce one lesson entry for each):
 ```
 Course description: You'll start by learning to see the web through the eyes of users who face accessibility barriers...
 
-Work product: Accessibility Audit Report (Google Doc)
+Work product: Accessibility Audit Report (WordPress page on learner's subsite)
 
 Learning objective for THIS lesson group: Identify common accessibility barriers on web pages
 
@@ -497,7 +583,7 @@ Learning objective: Identify common accessibility barriers on web pages
 Activity type: explore
 
 Work product: Accessibility Audit Report
-Work product tool: Google Doc
+Work product type: page (WordPress page on learner's subsite)
 
 Course position: Lesson 1 of 4 (first activity in the course)
 
@@ -518,7 +604,7 @@ Admin feedback on previous activity (if any): The rubric criteria are too vague 
 {
   "activity_type": "explore",
   "prompt": "Research common types of web accessibility barriers and start your Accessibility Audit Report.",
-  "instructions": "Create a new Google Doc called 'Accessibility Audit Report'. Search the web for common accessibility barriers that affect real users. Write about what you found in your own words — what surprised you or stood out.",
+  "instructions": "On your WordPress site, create a new page called 'Accessibility Audit Report'. Research common accessibility barriers that affect real users. Write about what you found in your own words — what surprised you or stood out. Save your page when you're done.",
   "scoring_rubric": [
     "Document is created with a clear title",
     "Identifies at least five distinct accessibility barriers",
@@ -538,7 +624,7 @@ Admin feedback on previous activity (if any): The rubric criteria are too vague 
 ```
 
 **Key prompt rules (adapted from 1111 School + Learn extension):**
-- **Portfolio-first:** Every activity adds to the work product. The first activity creates it; subsequent activities return to it. Never create throwaway exercises — the learner is always building something they'll keep.
+- **Portfolio-first:** Every activity adds to the work product on the learner's WordPress subsite. The first activity creates it (e.g., "Create a new page called..."); subsequent activities return to it (e.g., "Open your Accessibility Audit Report page and add a new section..."). Never create throwaway exercises — the learner is always building WordPress content they'll keep and can share.
 - **Activity type determines tone:** `explore` = research and discover; `apply` = practice a skill; `create` = build or refine; `final` = polish and deliver. Follow the learn-extension's activity type definitions.
 - **Guide, don't dictate (from Learn extension):** Tell the learner WHAT to learn and WHERE to put it — never tell them WHAT to write or HOW to structure it. No prescribed headings, templates, or bullet points to copy.
 - `prompt`: Core task question (1–2 sentences, min 20 chars). References the work product by name.
@@ -627,7 +713,7 @@ Course title: Web Accessibility Fundamentals
 Course description: You'll start by learning to see the web through the eyes of users who face accessibility barriers...
 
 Work product: Accessibility Audit Report
-Work product tool: Google Doc
+Work product type: page (WordPress page on learner's subsite)
 
 Learning objectives (all):
 1. Identify common accessibility barriers on web pages
@@ -650,8 +736,8 @@ Admin feedback on previous assessment (if any): The rubric doesn't test objectiv
 {
   "assessment_title": "Finalize Your Accessibility Audit Report",
   "assessment_type": "final",
-  "prompt": "Your Accessibility Audit Report has grown across every lesson in this course. Now it's time to finalize it. Review your entire document, fill any gaps, and make sure it demonstrates everything you've learned.",
-  "instructions": "Open your Accessibility Audit Report. Review it from start to finish. Make sure it covers all three areas: identifying barriers, audit methodology, and fix recommendations. Polish your writing and ensure every section shows your own understanding — not copied text.",
+  "prompt": "Your Accessibility Audit Report page has grown across every lesson in this course. Now it's time to finalize it. Review your entire page, fill any gaps, and make sure it demonstrates everything you've learned.",
+  "instructions": "Open your Accessibility Audit Report page on your WordPress site. Review it from start to finish. Make sure it covers all three areas: identifying barriers, audit methodology, and fix recommendations. Polish your writing and ensure every section shows your own understanding — not copied text. When you're satisfied, publish the page — it's now a live portfolio piece with a shareable URL.",
   "portfolio_rubric": [
     {
       "objective": "Identify common accessibility barriers on web pages",
@@ -700,6 +786,87 @@ Admin feedback on previous assessment (if any): The rubric doesn't test objectiv
 - `xp_value` for the final assessment is always 500 (the highest single reward, reflecting the synthesis required).
 - The assessment must be completable — it asks the learner to finalize existing work, not produce something entirely new.
 
+### 5.7 Agent 7: Activity Assessment Agent
+
+**Purpose:** Given a learner's submitted WordPress content (read from their subsite) and the activity's scoring rubric and mastery criteria, evaluate the submission and provide a structured assessment. This agent runs **on-demand** — not during course generation, but when a learner submits their work for grading. Follows the learn-extension's Activity Assessment Agent pattern.
+
+**Model:** Default model (`claude-sonnet-4-6` — needs nuanced evaluation of learner work)
+**Max tokens:** 2048
+**Prompt file:** `prompts/activity-assessment.md`
+
+**Input (user message):**
+```
+Activity type: explore
+
+Learning objective: Identify common accessibility barriers on web pages
+
+Mastery criteria:
+- Names at least five distinct accessibility barriers with correct categorization
+- Explains how each barrier affects real users (not just abstract rule violations)
+- Identifies barriers from at least three different categories (visual, motor, cognitive, auditory)
+- Uses specific examples rather than generic descriptions
+
+Scoring rubric:
+- Document is created with a clear title
+- Identifies at least five distinct accessibility barriers
+- Correctly categorizes barriers into visual, motor, cognitive, or auditory
+- Explains real user impact in the learner's own words (not copied)
+- Covers at least three different barrier categories
+
+Work product: Accessibility Audit Report
+Work product type: page
+
+Portfolio contribution expected: Creates the Accessibility Audit Report and documents initial barrier research — the foundation for all subsequent work.
+
+Learner's submitted WordPress content:
+---
+Page title: Accessibility Audit Report
+
+Page content:
+## Web Accessibility Barriers
+
+I visited the local library's website and found several accessibility issues...
+
+[full page content extracted from learner's subsite]
+---
+```
+
+**Expected output (JSON):**
+```json
+{
+  "score": 0.82,
+  "recommendation": "advance",
+  "strengths": [
+    "Identified six distinct barriers across four categories — exceeds the minimum",
+    "Each barrier includes a specific example from the library website, not generic descriptions",
+    "Clear explanation of how missing alt text affects screen reader users"
+  ],
+  "improvements": [
+    "The cognitive barriers section could be stronger — 'confusing layout' is vague. Which specific layout elements cause confusion, and for whom?",
+    "Consider adding the impact severity for each barrier to strengthen the audit"
+  ],
+  "rubric_results": [
+    {"criterion": "Document is created with a clear title", "met": true, "note": "Page titled 'Accessibility Audit Report'"},
+    {"criterion": "Identifies at least five distinct accessibility barriers", "met": true, "note": "Six barriers identified"},
+    {"criterion": "Correctly categorizes barriers", "met": true, "note": "Visual, motor, cognitive, and auditory categories used"},
+    {"criterion": "Explains real user impact in learner's own words", "met": true, "note": "Personal observations from testing the library site"},
+    {"criterion": "Covers at least three different barrier categories", "met": true, "note": "All four categories represented"}
+  ],
+  "portfolio_check": "The page establishes a solid foundation for the Accessibility Audit Report. Barrier categories are well-organized and the real-website approach gives the document authenticity."
+}
+```
+
+**Key prompt rules (from 1111 Learn extension's Activity Assessment Agent):**
+- Score on a 0.0–1.0 scale. Be calibrated: 0.85+ is genuinely excellent, 0.5 is mediocre, below 0.3 is missing the mark.
+- `recommendation` is one of: `advance` (score ≥ 0.7 — learner should proceed to next activity), `continue` (score 0.5–0.69 — acceptable but could improve), `revise` (score < 0.5 — learner should revise and resubmit).
+- `strengths`: 2–4 specific things the learner did well, referencing their actual content.
+- `improvements`: 1–3 specific, actionable suggestions. Never vague ("try harder") — always concrete ("the cognitive barriers section lists 'confusing layout' without specifying which elements or who is affected").
+- `rubric_results`: One entry per rubric criterion, with `met` (boolean) and `note` (brief explanation).
+- `portfolio_check`: How well this submission advances the work product. Does it build meaningfully on previous activities?
+- **Read, don't assume:** The agent receives the actual WordPress content. Evaluate what's there, not what you hope is there.
+- **Encourage, don't gatekeep:** The tone should be supportive and specific. Even low scores should feel like useful feedback, not punishment.
+- **Content is read from the learner's subsite** using `switch_to_blog()` — the orchestrator extracts the page/post content and passes it as text in the user message.
+
 ---
 
 ## 6. Output Validation
@@ -711,7 +878,7 @@ All agent output passes through deterministic validators before reaching WordPre
 **Course Describer output:**
 - `narrative_description` is a non-empty string (min 100 chars)
 - `work_product` is a non-empty string (2–60 chars) — the portfolio artifact name
-- `work_product_tool` is a non-empty string — the tool used (e.g., "Google Doc", "CodePen")
+- `work_product_type` is one of: `page`, `post_series`, `site`
 - `lessons` is an array with exactly one entry per objective
 - Each lesson has `lesson_title` (5–60 chars) and `lesson_summary` (min 30 chars)
 
@@ -750,6 +917,15 @@ All agent output passes through deterministic validators before reaching WordPre
 - `completion_message` is a non-empty string (min 50 chars) — must reference the work product as a portfolio piece
 - No unsafe content patterns
 
+**Activity Assessment output:**
+- `score` is a float between 0.0 and 1.0
+- `recommendation` is one of: `advance`, `continue`, `revise`
+- `recommendation` must be consistent with `score`: `advance` requires score ≥ 0.7, `continue` requires 0.5 ≤ score < 0.7, `revise` requires score < 0.5
+- `strengths` is an array of 2–4 non-empty strings
+- `improvements` is an array of 1–3 non-empty strings
+- `rubric_results` is an array with one entry per rubric criterion, each having `criterion` (string), `met` (boolean), `note` (string)
+- `portfolio_check` is a non-empty string (min 20 chars)
+
 ### 6.2 Retry Strategy
 
 On validation failure, the agent call is retried once automatically (matching both Learn and School patterns). If the retry also fails, the admin sees an error with:
@@ -786,6 +962,7 @@ learned-wp-creator/
 │   ├── class-orchestrator.php      Agent orchestration, pipeline, validation
 │   ├── class-content-lock.php      Block editor content locking, wp_insert_post_data guard
 │   ├── class-feedback.php          Feedback submission handling, regeneration triggers
+│   ├── class-learner-assessment.php  Learner submission handling, Activity Assessment Agent orchestration
 │   ├── class-admin-page.php        Dashboard page registration and rendering
 │   ├── class-settings.php          Settings page (API key, model config, lessons per objective)
 │   └── class-telemetry.php         Event collection, buffering, learn-service transmission
@@ -807,7 +984,8 @@ learned-wp-creator/
 │   ├── lesson-writer.md            System prompt — full lesson content
 │   ├── activity-creator.md         System prompt — portfolio activity + gamification
 │   ├── activity-reviewer.md        System prompt — quality gate for activities
-│   └── assessment-creator.md       System prompt — summative portfolio assessment
+│   ├── assessment-creator.md       System prompt — summative portfolio assessment
+│   └── activity-assessment.md      System prompt — evaluates learner WordPress content
 │
 └── assets/
     └── icon.svg                    Plugin icon / branding
@@ -881,7 +1059,7 @@ Feedback can be provided at five levels, each triggering regeneration of differe
 
 | Level | Where feedback is given | What gets regenerated | Agents re-run |
 |-------|------------------------|----------------------|----------------|
-| **Course description** | Course taxonomy term edit screen | Entire course — new narrative, new plans, new lessons, new activities, new assessment | All six agents |
+| **Course description** | Course taxonomy term edit screen | Entire course — new narrative, new plans, new lessons, new activities, new assessment | All six content-generation agents |
 | **Lesson plan** | Lesson group (`lesson_group`) tag edit screen | All lessons in that group + their activities | Lesson Planner → Lesson Writer → Activity Creator → Activity Reviewer |
 | **Written lesson** | Post editor — block editor sidebar panel | That lesson only (re-written from existing plan) | Lesson Writer only |
 | **Activity** | Post editor — custom meta box below content | That lesson's activity only (re-created from existing plan) | Activity Creator → Activity Reviewer |
@@ -994,7 +1172,7 @@ For `learn` posts authored by the 1111 Agent user, the block editor content area
 | `_1111_narrative_description` | `string` | AI-generated narrative arc from Course Describer |
 | `_1111_lesson_titles` | `array` | Pre-set `[{lesson_title, lesson_summary}]` from Course Describer |
 | `_1111_work_product` | `string` | Portfolio artifact name (e.g., "Accessibility Audit Report") |
-| `_1111_work_product_tool` | `string` | Tool for work product (e.g., "Google Doc") |
+| `_1111_work_product_type` | `string` | Work product WordPress content type: `page`, `post_series`, or `site` |
 | `_1111_work_product_description` | `string` | 2–3 sentence description framing portfolio value |
 | `_1111_assessment` | `array` | Full assessment spec from Assessment Creator (Agent 6) |
 | `_1111_assessment_post_id` | `int` | Post ID of the assessment post |
@@ -1027,7 +1205,32 @@ For `learn` posts authored by the 1111 Agent user, the block editor content area
 | `_1111_activity_feedback` | `string` | Admin's feedback on the activity (cleared after regeneration) |
 | `_1111_activity_version` | `int` | Incremented on each activity-level regeneration |
 
-### 9.3 Options (wp_options)
+### 9.3 Learner Submission Data (Main Site — Custom Table)
+
+Learner submissions and assessment results are stored in a custom table on the main site. This tracks which learner submitted which content for which activity, and the assessment result.
+
+**Table:** `{prefix}_1111_learn_submissions`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `bigint` | Auto-increment primary key |
+| `user_id` | `bigint` | WordPress user ID of the learner |
+| `blog_id` | `bigint` | Subsite ID where the learner's content lives |
+| `post_id` | `bigint` | Post/page ID on the learner's subsite (the submitted content) |
+| `lesson_post_id` | `bigint` | Post ID of the `learn` lesson on the main site |
+| `course_term_id` | `bigint` | Term ID of the course taxonomy term |
+| `activity_type` | `varchar(20)` | `explore`, `apply`, `create`, or `final` |
+| `submitted_at` | `datetime` | When the learner submitted |
+| `score` | `decimal(3,2)` | Assessment score (0.00–1.00), NULL until assessed |
+| `recommendation` | `varchar(20)` | `advance`, `continue`, or `revise` — NULL until assessed |
+| `assessment_json` | `longtext` | Full Activity Assessment Agent output (JSON) |
+| `assessed_at` | `datetime` | When the assessment completed, NULL until assessed |
+| `attempt_number` | `int` | Submission attempt (1 for first, incremented on resubmit) |
+| `content_snapshot` | `longtext` | Snapshot of the learner's content at submission time (in case they edit after submitting) |
+
+**Indexes:** `(user_id, course_term_id)`, `(lesson_post_id, user_id)`, `(blog_id, post_id)`
+
+### 9.4 Options (wp_options)
 
 | Option key | Description |
 |------------|-------------|
@@ -1104,7 +1307,7 @@ Request → Validate → Create Course Term → Phase 0 → Per-Objective Loop �
 
 1. Call Course Describer agent with title, description, objectives
 2. Validate output (narrative_description + work_product + lessons array)
-3. Store `_1111_narrative_description`, `_1111_lesson_titles`, `_1111_work_product`, `_1111_work_product_tool`, `_1111_work_product_description` on the course term
+3. Store `_1111_narrative_description`, `_1111_lesson_titles`, `_1111_work_product`, `_1111_work_product_type`, `_1111_work_product_description` on the course term
 4. Send progress update: lesson titles and work product now visible in the stepper UI
 
 ### 11.3 Per-Objective Loop (Phase 1+)
@@ -1218,6 +1421,7 @@ Progress is reported via **polling** (WordPress hosting compatible):
 | `prompts/activity-creator.md` | Activity Creator | fast | Portfolio activity + gamification from activity seed |
 | `prompts/activity-reviewer.md` | Activity Reviewer | fast | Quality gate: rubric alignment, difficulty, portfolio check |
 | `prompts/assessment-creator.md` | Assessment Creator | default | Summative portfolio assessment across all objectives |
+| `prompts/activity-assessment.md` | Activity Assessment | default | Evaluates learner WordPress content against rubric |
 
 ### 12.3 Prompt File Structure
 
@@ -1321,6 +1525,7 @@ All events are recorded server-side during course generation and batched for tra
 | `course_failed` | Pipeline fails fatally | failedAgent, failedObjectiveIndex, errorType, errorMessage |
 | `feedback_submitted` | Admin submits feedback for regeneration | feedbackLevel (course/plan/lesson/activity), agentsToRerun (list) |
 | `content_regenerated` | Regeneration completes from feedback | feedbackLevel, agentsRerun, succeeded (bool), lessonCount |
+| `submission_assessed` | Activity Assessment Agent completes | activityType, score, recommendation, attemptNumber, rubricCriteriaCount, rubricCriteriaMet |
 
 ### 15.4 What Is Never Collected
 
@@ -1453,37 +1658,36 @@ This mirrors [Rule #10 from the extension's CLAUDE.md](https://github.com/1111ph
 
 ## 16. Non-Goals (Explicitly Out of Scope)
 
-> **Note:** Telemetry and assessments are no longer non-goals — see Sections 5.5–5.6 and 15.
+> **Note:** Telemetry, assessments, learner-submitted assessment grading, and multi-site are no longer non-goals — see Sections 4.7, 5.5–5.7, and 15.
 
 These are intentionally excluded from 1111 Learn Creator:
 
-1. **Learner-submitted assessment grading** — The plugin generates assessment rubrics and scoring guides, but does not evaluate actual learner submissions. AI-powered grading of real learner work belongs to 1111 Learn Administrator.
-2. **Learner profiles** — No tracking of individual learner progress, preferences, or personalization. (The gamification metadata — XP values, milestones — is generated as content for the admin/learner to see, but the plugin does not track earned XP or completed milestones per learner.)
-3. **Progress tracking** — No completion tracking or status indicators for learners. (Portfolio contribution descriptions show what each activity adds to the work product, but the plugin does not track whether a learner has actually done it.)
-4. **Frontend interactivity** — No JS-driven learner interactions. The plugin produces standard WordPress posts. Gamification data (XP, milestones) is stored as post meta for display in templates or companion plugins.
-5. **Enrollment / access restrictions** — No learner enrollment or content gating. (The plugin does create one custom role — `1111_learn_agent` — for the system agent user, but this is not a user-facing role.)
-6. **Certificates or badges** — No completion rewards beyond the generated `completion_message` and portfolio framing. Actual certificate generation belongs to a companion plugin.
-7. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
-8. **Multi-site support** — Single-site only for v1.
-9. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
-10. **On-demand generation** — Unlike School, all lessons are generated upfront (no need for on-demand since there's no learner progression to gate on).
+1. **Learner profiles** — No tracking of individual learner preferences or adaptive personalization. (The plugin tracks submissions and assessment results per learner, but does not build a learner profile with strengths, weaknesses, or pacing data — that belongs to the Administrator companion plugin.)
+2. **Enrollment / access restrictions** — No learner enrollment workflow or content gating. Subsite provisioning (Section 4.7.3) is handled by the companion Administrator plugin or manual network admin setup. The Creator plugin assumes subsites exist.
+3. **Certificates or badges** — No completion rewards beyond the generated `completion_message` and portfolio framing. Actual certificate generation belongs to a companion plugin.
+4. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
+5. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
+6. **On-demand generation** — Unlike School, all lessons are generated upfront (no need for on-demand since there's no learner progression to gate on).
+7. **Learner-facing course navigation** — The plugin does not provide a frontend UI for browsing courses, viewing progress, or navigating between lessons. That experience is built by themes or the Administrator companion plugin.
+8. **XP tracking per learner** — The plugin generates XP values and records assessment scores, but does not maintain a running XP total per learner. Cumulative XP tracking belongs to the Administrator companion plugin.
 
 ---
 
 ## 17. Future: 1111 Learn Administrator (Companion Plugin)
 
-A planned companion plugin will add:
+With learner assessment grading, WordPress-native portfolio creation, and Multisite now part of the Creator plugin, the Administrator companion plugin focuses on the **learner experience layer**:
 
-- Learner-facing course navigation and progress tracking
-- **AI-powered activity grading** — using the `scoring_rubric`, `mastery_criteria`, and `portfolio_rubric` already generated by this plugin to evaluate actual learner submissions (following the learn-extension's Activity Assessment Agent pattern: score 0.0–1.0, recommendation advance/revise/continue, strengths, improvements)
+- **Learner-facing course navigation** — browse courses, view lesson sequence, track which activities are completed/pending
+- **Progress tracking** — completion status per lesson, per activity, per course. Visual progress bars and dashboards.
 - **Learner profiles** with adaptive content (following the learn-extension's Learner Profile Agent pattern: monotonically growing profile with strengths, weaknesses, pacing, preferences)
-- **XP tracking** — learners earn the `xp_value` defined on each activity/assessment when they complete it, with milestone celebrations
-- **Portfolio presentation** — learners view their accumulated work product with contribution timeline (following the learn-extension's Work Detail "build timeline" view)
-- Enrollment and access control
-- Analytics dashboard
-- Integration with the `learn` CPT, `course` taxonomy, `lesson_group` taxonomy, and all structured meta created by this plugin
+- **Cumulative XP tracking** — learners earn the `xp_value` defined on each activity/assessment when they complete it (based on Creator's assessment scores), with milestone celebrations and leaderboards
+- **Portfolio presentation** — learners view their accumulated WordPress content with a contribution timeline (following the learn-extension's Work Detail "build timeline" view). Since portfolio items are WordPress pages/posts on the learner's subsite, the Administrator plugin provides a curated portfolio view across all courses.
+- **Subsite provisioning** — automated creation of learner subsites on the Multisite network when a learner enrolls in their first course
+- **Enrollment and access control** — course enrollment, content gating, learner onboarding
+- **Analytics dashboard** — admin-facing analytics: completion rates, average assessment scores, time-to-completion, common feedback patterns
+- **Certificates** — generate completion certificates based on course completion and assessment scores
 
-The Learn Creator plugin is designed so the Administrator plugin can build on top of its data structures without modifications. Specifically: `_1111_mastery_criteria`, `_1111_activity` (including `scoring_rubric`, `portfolio_contribution`, `xp_value`, `milestone`), `_1111_key_takeaways`, `_1111_assessment` (including `portfolio_rubric`, `scoring_guide`), and `_1111_work_product` are all stored as structured meta precisely so the Administrator plugin can use them for grading, XP tracking, portfolio display, and progression.
+The Creator plugin is designed so the Administrator plugin can build on top of its data structures without modifications. The Creator stores everything the Administrator needs: `_1111_mastery_criteria`, `_1111_activity` (including `scoring_rubric`, `portfolio_contribution`, `xp_value`, `milestone`), `_1111_key_takeaways`, `_1111_assessment` (including `portfolio_rubric`, `scoring_guide`), `_1111_work_product`, and the `_1111_learn_submissions` table with per-learner assessment results — all structured for the Administrator to consume for progress tracking, XP accumulation, portfolio display, and learner profiles.
 
 ---
 
@@ -1491,7 +1695,7 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 1. **No build step.** Vanilla PHP, JS, CSS. No Webpack, Sass, or npm. Exception: the block editor sidebar panel (`editor-sidebar.js`) uses `wp.plugins.registerPlugin` and `wp.editPost.PluginSidebar` from the bundled `@wordpress/edit-post` and `@wordpress/plugins` packages — no npm install required, these ship with WordPress.
 2. **WordPress coding standards.** Follow WordPress PHP and JavaScript coding standards.
-3. **Minimum requirements:** WordPress 6.7+, PHP 8.0+. The plugin targets the **latest WordPress version** and relies on block editor APIs (block locking, PluginSidebar, SlotFill) that are stable in 6.7+. Do not add fallbacks for the classic editor — the block editor is required.
+3. **Minimum requirements:** WordPress 6.7+, PHP 8.0+, **WordPress Multisite** network. The plugin targets the **latest WordPress version** and relies on block editor APIs (block locking, PluginSidebar, SlotFill) that are stable in 6.7+. The plugin must be network activated on a Multisite installation. Do not add fallbacks for the classic editor — the block editor is required.
 4. **Block editor first.** All post-editor UI (feedback panels, content locking, activity meta box) is built for the block editor using the `@wordpress/` JS packages bundled with WordPress. Taxonomy term editors use standard WordPress admin UI enhanced with custom meta boxes.
 5. **Prefix everything.** `_1111_learn_` for meta/options, `Learn_Creator_` for classes.
 6. **No Composer.** API client uses `wp_remote_post()`.
@@ -1510,6 +1714,8 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
    - `1111_learn_feedback_submitted` — action when admin submits feedback at any level
    - `1111_learn_before_regenerate` — filter feedback + inputs before regeneration pipeline
    - `1111_learn_content_regenerated` — action after regeneration completes
+   - `1111_learn_before_assess` — filter learner content before Activity Assessment Agent
+   - `1111_learn_submission_assessed` — action after learner submission is assessed
 8. **Prompts are data, not code.** `prompts/*.md` loaded at runtime. Editable without touching PHP.
 9. **Agent user owns all content.** All generated posts are authored by the 1111 Agent user. Human administrators interact with content through feedback, not direct editing.
 
@@ -1518,29 +1724,32 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 ## 19. Implementation Phases
 
 ### Phase 1: Foundation
-- [ ] Plugin bootstrap file with proper headers and ABSPATH checks
+- [ ] Plugin bootstrap file with proper headers, ABSPATH checks, and **Multisite network activation check** (bail with admin notice if not on Multisite)
 - [ ] Register `learn` custom post type with REST support
 - [ ] Register `course` taxonomy
 - [ ] Register `lesson_group` tag taxonomy
 - [ ] Create 1111 Agent user and `1111_learn_agent` role on activation
-- [ ] Clean up agent user and role on uninstall
+- [ ] Create `_1111_learn_submissions` custom table on activation (see Section 9.3)
+- [ ] Clean up agent user, role, and custom table on uninstall
 - [ ] Settings page with encrypted API key storage, model selectors, and lessons-per-objective
+- [ ] Restrict admin UI to main site only (`is_main_site()` checks)
 - [ ] `CLAUDE.md` for the new repo
-- [ ] `README.md` with install instructions
+- [ ] `README.md` with install instructions (including Multisite setup)
 
 ### Phase 2: Agents and Orchestrator
 - [ ] Anthropic API HTTP client class (`wp_remote_post`, error handling, retries)
 - [ ] Prompt file loader (reads `prompts/*.md`)
 - [ ] JSON parser (handles markdown fencing, extracts JSON from response)
 - [ ] Validation functions for each agent's output schema
-- [ ] Orchestrator class wiring the six-agent pipeline
-- [ ] Write all six prompt files:
-  - [ ] `prompts/course-describer.md` (narrative + work product)
+- [ ] Orchestrator class wiring the seven-agent pipeline
+- [ ] Write all seven prompt files:
+  - [ ] `prompts/course-describer.md` (narrative + work product as WordPress content type)
   - [ ] `prompts/lesson-planner.md` (backward design + activity types)
   - [ ] `prompts/lesson-writer.md` (lesson content)
-  - [ ] `prompts/activity-creator.md` (portfolio activity + gamification)
+  - [ ] `prompts/activity-creator.md` (portfolio activity directing learner to create WordPress content)
   - [ ] `prompts/activity-reviewer.md` (quality gate)
   - [ ] `prompts/assessment-creator.md` (summative portfolio assessment)
+  - [ ] `prompts/activity-assessment.md` (evaluates learner WordPress content against rubric)
 
 ### Phase 3: Admin Dashboard
 - [ ] Dashboard page registration and menu setup
@@ -1595,7 +1804,19 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 - [ ] Feedback tracking: `feedback_submitted` and `content_regenerated` events (level + agents, never feedback text)
 - [ ] Wire telemetry events into orchestrator pipeline (agent_request, agent_response, validation_failure, etc.)
 
-### Phase 8: Polish and Quality
+### Phase 8: Learner Assessment Pipeline
+- [ ] AJAX endpoint for learner submission: accepts `(lesson_post_id, blog_id, post_id)`
+- [ ] Content extraction: `switch_to_blog()` → read learner's page/post content → `restore_current_blog()`
+- [ ] Wire extracted content + activity rubric + mastery criteria → Activity Assessment Agent
+- [ ] Validate assessment output (score, recommendation, rubric_results)
+- [ ] Store submission and assessment result in `_1111_learn_submissions` table
+- [ ] Content snapshot: save the learner's content at submission time
+- [ ] Support resubmission: increment `attempt_number`, run assessment again
+- [ ] Learner-facing assessment result display: score, strengths, improvements, rubric results
+- [ ] Admin view: see all submissions and assessment results per course/lesson
+- [ ] Telemetry: `submission_assessed` event (score, recommendation, attempt_number — never learner content)
+
+### Phase 9: Polish and Quality
 - [ ] Accessibility audit: focus management, ARIA, keyboard, contrast
 - [ ] Security audit: nonces, capabilities, sanitization, escaping
 - [ ] Uninstall cleanup (`uninstall.php` — remove options, term meta, post meta)
@@ -1611,11 +1832,11 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 2. Generated lessons follow a visible narrative arc — they read as chapters in the same course, not disconnected topics.
 3. Each lesson's content clearly prepares the learner for the associated activity. Backward design is evident.
 4. Activities have specific, checkable rubric criteria — not vague "practice what you learned."
-5. Every activity contributes to a single portfolio work product. The final assessment asks the learner to finalize and present that work product. A learner completing the course has a tangible artifact they can show to others.
+5. Every activity contributes to a single portfolio work product **built within WordPress** (pages, posts, or sites on the learner's subsite). The final assessment asks the learner to finalize and present that work product. A learner completing the course has a tangible WordPress artifact with a shareable URL.
 6. Activities follow a clear progression (`explore` → `apply` → `create` → `final`) with increasing XP values and achievement milestones that reflect genuine learning progress.
 7. The Activity Reviewer catches rubric-mastery misalignment before content reaches the admin — measurably reducing the need for admin feedback on activities.
 8. All generated content is saved as standard WordPress draft posts authored by the 1111 Agent user — viewable in any theme, reviewable in the block editor, improvable through feedback-driven regeneration.
-9. The plugin installs with zero configuration beyond entering an API key.
+9. The plugin installs on a WordPress Multisite network with zero configuration beyond entering an API key.
 10. All admin UI passes WCAG 2.1 AA.
 11. Agent prompts live in Markdown files; merged PRs take effect immediately on the next generation without a plugin update.
 12. A failed generation can be retried without losing already-generated lessons.
@@ -1623,3 +1844,6 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 14. The block editor shows generated content as read-only with a clear feedback panel in the sidebar and activity/assessment feedback in meta boxes.
 15. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
 16. Prompt quality measurably improves over time: validation failure rates decrease, retry rates decrease, and the percentage of generated content that admins request feedback on decreases.
+17. The Activity Assessment Agent evaluates learner-submitted WordPress content and returns calibrated scores: a submission that clearly meets all rubric criteria scores 0.85+, while one missing key criteria scores below 0.5.
+18. Learners create real WordPress content (pages, posts) on their own subsites as directed by activity instructions — the portfolio is native to WordPress, not an external tool.
+19. Assessment results include actionable, specific feedback: strengths reference actual content the learner wrote, and improvements suggest concrete changes rather than vague encouragement.
