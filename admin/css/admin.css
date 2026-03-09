@@ -1,0 +1,31 @@
+/**
+ * Learn admin styles.
+ *
+ * Follows WordPress admin design patterns with minimal custom styling.
+ * The plugin's black-and-white branding is used only for identity elements.
+ *
+ * @package Learn
+ */
+
+/* Page header */
+.learn-page-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.learn-page-header .learn-logo {
+	width: 80px;
+	height: auto;
+}
+
+/* Settings page */
+.learn-settings-form .form-table th {
+	width: 250px;
+}
+
+/* Agent user avatar */
+.learn-agent-avatar {
+	border-radius: 2px;
+}
