@@ -1,16 +1,17 @@
-# 1111 Learn — Product Requirements Document
+# Learn — Product Requirements Document
 
 ## WordPress Plugin for AI-Powered Course Creation, Portfolio Building, and Assessment
 
 **Version:** 0.5.0-draft
 **Date:** 2026-03-09
 **Status:** Draft — awaiting review
+**Author:** 11:11 Philosopher's Group
 
 ---
 
 ## 1. Overview
 
-**1111 Learn** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A seven-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
+**Learn** is a WordPress plugin by 11:11 Philosopher's Group that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A seven-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
 
 Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner builds **within WordPress itself**. The learner isn't just "completing exercises" — they're creating real WordPress content (pages, posts, even entire sites) that proves what they can do. The plugin runs on a **WordPress Multisite** network: the administrator creates courses on the main site, and each learner gets their own subsite where they build their portfolio work product. An Activity Assessment Agent evaluates the learner's WordPress content against the generated rubrics and mastery criteria.
 
@@ -70,6 +71,8 @@ The WordPress plugin takes the best of both: the narrative threading, backward d
 The plugin creates a dedicated WordPress user on activation — the **1111 Agent** user. This is the only user that owns and edits generated post content.
 
 - **Username:** `1111-learn-agent`
+- **Display name:** 1111
+- **Avatar:** 1111 logo — `assets/1111-logo.svg` (see Section 4.8.2)
 - **Role:** Custom role `1111_learn_agent` with capabilities: `edit_learn_posts`, `edit_published_learn_posts`, `publish_learn_posts`, `delete_learn_posts`, `read`
 - **Email:** `agent@1111-learn.local` (non-routable, placeholder)
 - **Created on:** Plugin activation (`register_activation_hook`)
@@ -81,7 +84,7 @@ All generated posts (`learn` CPT) are authored by this user. The `post_author` i
 - Creates a clean audit trail: every generated post is clearly marked as AI-authored
 - Enforces the feedback-driven workflow — if you can't directly edit, you must provide feedback, which flows through the pipeline and produces better output
 - The agent user's edit history becomes telemetry data: when the agent rewrites a post, the revision diff shows exactly what changed
-- Future companion plugins (1111 Learn Administrator) can identify AI-generated content by author
+- Future companion plugins (Learn Administrator) can identify AI-generated content by author
 
 ---
 
@@ -231,7 +234,7 @@ These principles are proven in production and must carry forward:
 | Has archive | `true` |
 | Supports | `title`, `editor`, `excerpt`, `thumbnail`, `custom-fields`, `revisions` |
 | Show in REST | `true` (Gutenberg compatible) |
-| Menu icon | `dashicons-welcome-learn-more` |
+| Menu icon | Custom SVG — Learn logo (see Section 4.8) |
 | Menu position | 25 (below Comments) |
 
 ### 4.5 Custom Taxonomy: `course`
@@ -297,7 +300,7 @@ Multisite Network
 │   ├── learn CPT (lessons, activities, assessments)
 │   ├── course taxonomy
 │   ├── lesson_group taxonomy
-│   ├── 1111 Learn admin UI
+│   ├── Learn admin UI
 │   └── Course content is generated and managed here
 │
 ├── Learner Subsite: learner-jane.example.com
@@ -337,7 +340,35 @@ The Course Describer's `work_product_tool` field is replaced by `work_product_ty
 - The plugin is **network activated** — it runs across the entire Multisite network
 - Admin UI (course creation, settings, feedback) is only accessible on the **main site**
 - The Activity Assessment Agent can read content from any subsite in the network
-- Learner subsites do not show the 1111 Learn admin menu — they only see their own content creation tools
+- Learner subsites do not show the Learn admin menu — they only see their own content creation tools
+
+### 4.8 Branding and Visual Identity
+
+**Author:** 11:11 Philosopher's Group
+
+#### 4.8.1 Learn Logo (Plugin Identity)
+
+The plugin logo is the word **LEARN** in all capitals, set in **SF Pro Display Bold** (Cupertino system font) or the closest available bold geometric sans-serif, rendered as white text on a solid black rectangle with a thin white border (1–2px). This logo is used for:
+
+- WordPress admin menu icon (rendered as a 20×20 SVG)
+- Plugin header on the Plugins screen
+- Dashboard page header
+- Notification banners in the block editor
+
+File: `assets/learn-logo.svg`
+
+#### 4.8.2 1111 Logo (Agent User Identity)
+
+The 1111 Agent user's avatar uses the same visual treatment — **1111** in all caps, white text, black box, thin white border, same typeface — so that AI-generated content is visually attributable at a glance. Used for:
+
+- The 1111 Agent user's WordPress avatar (via `get_avatar` filter)
+- Author byline on generated lesson posts
+
+File: `assets/1111-logo.svg`
+
+#### 4.8.3 Design Direction
+
+The admin UI follows **WordPress design patterns** — standard admin components, default color palette, native form controls, and wp-admin spacing conventions. The Learn logo's black-and-white aesthetic is used only where plugin identity is needed (menu icon, page headers, agent attribution) rather than as a full theme applied to every surface. Accent colors, button styles, and layout follow whatever the active WordPress admin color scheme provides.
 
 ---
 
@@ -957,7 +988,8 @@ Safety violations are never retried — the admin is shown an error and the gene
 │   └── activity-assessment.md      System prompt — evaluates learner WordPress content
 │
 └── assets/
-    └── icon.svg                    Plugin icon / branding
+    ├── learn-logo.svg              Plugin logo — "LEARN" wordmark
+    └── 1111-logo.svg               Agent user avatar — "1111" wordmark
 ```
 
 ---
@@ -966,8 +998,8 @@ Safety violations are never retried — the admin is shown an error and the gene
 
 ### 8.1 Top-Level Menu
 
-- **Menu title:** 1111 Learn
-- **Icon:** `dashicons-welcome-learn-more`
+- **Menu title:** Learn
+- **Icon:** Custom SVG (see Section 4.8 — Branding)
 - **Submenu items:**
   - **Dashboard** — Course creation form
   - **All Lessons** — Standard CPT list view (WordPress default)
@@ -1123,7 +1155,7 @@ For `learn` posts authored by the 1111 Agent user, the block editor content area
 - All blocks in agent-authored posts are locked with `{ "lock": { "move": true, "remove": true } }` — blocks cannot be moved, removed, or edited
 - The block editor toolbar is hidden for locked content via the `editor.BlockEdit` filter
 - The post title is also locked (non-editable) via the `enter_title_here` filter returning the current title, combined with a read-only attribute on the title input
-- A prominent notice at the top of the editor explains: "This lesson was generated by 1111 Learn. Use the feedback panel in the sidebar to request changes."
+- A prominent notice at the top of the editor explains: "This lesson was generated by Learn. Use the feedback panel in the sidebar to request changes."
 - The `post_content` is additionally protected server-side: the `wp_insert_post_data` filter rejects content changes from any user other than the 1111 Agent user
 
 **Why block editing, not classic editor?** The plugin targets the latest WordPress version and the block editor is the standard editing experience. Block locking is a native Gutenberg API that provides the exact UX needed: content is visible and structured but not directly editable.
@@ -1599,7 +1631,7 @@ This mirrors [Rule #10 from the extension's CLAUDE.md](https://github.com/1111ph
 
 > **Note:** Telemetry, assessments, learner-submitted assessment grading, and multi-site are no longer non-goals — see Sections 4.7, 5.5–5.7, and 15.
 
-These are intentionally excluded from 1111 Learn:
+These are intentionally excluded from Learn:
 
 1. **Learner profiles** — No tracking of individual learner preferences or adaptive personalization. (The plugin tracks submissions and assessment results per learner, but does not build a learner profile with strengths, weaknesses, or pacing data — that belongs to the Administrator companion plugin.)
 2. **Enrollment / access restrictions** — No learner enrollment workflow or content gating. Subsite provisioning (Section 4.7.3) is handled by the companion Administrator plugin or manual network admin setup. The Learn plugin assumes subsites exist.
@@ -1612,7 +1644,7 @@ These are intentionally excluded from 1111 Learn:
 
 ---
 
-## 17. Future: 1111 Learn Administrator (Companion Plugin)
+## 17. Future: Learn Administrator (Companion Plugin)
 
 With learner assessment grading, WordPress-native portfolio creation, and Multisite now part of the Learn plugin, the Administrator companion plugin focuses on the **learner experience layer**:
 
@@ -1718,7 +1750,7 @@ The Learn plugin is designed so the Administrator plugin can build on top of its
 ### Phase 5: Block Editor Integration
 - [ ] Content locking: lock all blocks in agent-authored posts (move + remove)
 - [ ] Server-side guard: `wp_insert_post_data` filter rejects content changes from non-agent users
-- [ ] Block editor notice: "This lesson was generated by 1111 Learn. Use the feedback panel..."
+- [ ] Block editor notice: "This lesson was generated by Learn. Use the feedback panel..."
 - [ ] Sidebar panel via `registerPlugin` / `PluginSidebar`: lesson feedback textarea + regenerate button
 - [ ] Sidebar panel for assessment post: assessment display + feedback textarea + regenerate button
 - [ ] Activity meta box below content: activity display with type badge, XP, milestone, portfolio contribution, reviewer verdict, feedback textarea + regenerate button
