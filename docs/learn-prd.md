@@ -482,7 +482,7 @@ Learning objectives (3 total — produce one lesson entry for each):
 **Max tokens:** 2048
 **Prompt file:** `prompts/lesson-planner.md`
 
-**Lesson count:** The admin sets a target number of lessons per objective on the Settings page (default: 1, range: 1–4). The Lesson Planner receives this as input and produces a plan with that many lesson outlines. When the count is greater than 1, the planner splits the objective's content across multiple lessons in a logical progression. All lessons from the same plan are grouped under a shared `lesson_group` tag.
+**Lesson count:** The plugin defines a target number of lessons per objective as a constant (`LEARN_LESSONS_PER_OBJECTIVE`, default: 1, range: 1–4). The Lesson Planner receives this as input and produces a plan with that many lesson outlines. When the count is greater than 1, the planner splits the objective's content across multiple lessons in a logical progression. All lessons from the same plan are grouped under a shared `lesson_group` tag.
 
 **Input (user message):**
 ```
@@ -1019,7 +1019,7 @@ Safety violations are never retried — the admin is shown an error and the gene
 │   ├── class-feedback.php          Feedback submission handling, regeneration triggers
 │   ├── class-learner-assessment.php  Learner submission handling, Activity Assessment Agent orchestration
 │   ├── class-admin-page.php        Dashboard page registration and rendering
-│   ├── class-settings.php          Settings page (API key, model config, lessons per objective)
+│   ├── class-settings.php          Settings page (API key, data sharing opt-in)
 │   └── class-telemetry.php         Event collection, buffering, learn-service transmission
 │
 ├── admin/
@@ -1060,7 +1060,7 @@ Safety violations are never retried — the admin is shown an error and the gene
   - **All Lessons** — Standard CPT list view (WordPress default)
   - **Courses** — Course taxonomy management (course-level feedback on term edit screen)
   - **Lesson Groups** — Lesson group tag management (plan-level feedback on tag edit screen)
-  - **Settings** — API key, model configuration, lessons per objective
+  - **Settings** — API key, data sharing opt-in
 
 ### 8.2 Dashboard Page — Course Creation Form
 
@@ -1093,15 +1093,26 @@ Safety violations are never retried — the admin is shown an error and the gene
 
 ### 8.3 Settings Page
 
+The settings page is intentionally minimal — two fields only:
+
 | Field | Type | Notes |
 |-------|------|-------|
 | Anthropic API Key | Password input | Stored encrypted in `wp_options`. Masked in UI. |
-| Fast Model | Select | Default: `claude-haiku-4-5-20251001`. Used by Describer, Planner, Activity Creator. |
-| Default Model | Select | Default: `claude-sonnet-4-6`. Used by Lesson Writer (needs more tokens). |
-| Max Tokens (Plan) | Number | Default: 2048. Range: 512–4096. |
-| Max Tokens (Content) | Number | Default: 8192. Range: 1024–16384. |
-| Lessons per Objective | Number | Default: 1. Range: 1–4. How many lessons the Lesson Planner generates per objective. |
-| Share Data with 1111 | Checkbox | Default: OFF. Consent dialog on first enable. See Section 15. |
+| Share Data with 11:11 Philosopher's Group | Checkbox | Default: OFF. Consent dialog on first enable. See Section 15. |
+
+All other configuration (model selection, max tokens, lessons per objective) is **hardcoded in the plugin** and tuned through the telemetry → PR pipeline (Section 15.8). Exposing these as admin settings would create a support surface for values that most users shouldn't need to change. If telemetry reveals that a default needs adjustment, an agent proposes a code change — not a per-site override.
+
+**Hardcoded defaults (defined in plugin constants):**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `LEARN_FAST_MODEL` | `claude-haiku-4-5-20251001` | Describer, Planner, Activity Creator, Activity Reviewer |
+| `LEARN_DEFAULT_MODEL` | `claude-sonnet-4-6` | Lesson Writer, Assessment Creator, Activity Assessment |
+| `LEARN_PLAN_MAX_TOKENS` | `2048` | Max tokens for planning agents |
+| `LEARN_CONTENT_MAX_TOKENS` | `8192` | Max tokens for content generation |
+| `LEARN_LESSONS_PER_OBJECTIVE` | `1` | Target lesson count per objective (1–4) |
+
+These can be overridden via `wp-config.php` `define()` for advanced users or development, but are not exposed in the admin UI.
 
 Settings are saved using the WordPress Settings API with nonce verification and capability checks.
 
@@ -1291,11 +1302,6 @@ Learner submissions and assessment results are stored in a custom table on the m
 | Option key | Description |
 |------------|-------------|
 | `1111_learn_api_key` | Encrypted Anthropic API key |
-| `1111_learn_fast_model` | Model ID for Describer, Planner, Activity Creator |
-| `1111_learn_default_model` | Model ID for Lesson Writer |
-| `1111_learn_plan_max_tokens` | Max tokens for planning agents |
-| `1111_learn_content_max_tokens` | Max tokens for content generation |
-| `1111_learn_lessons_per_objective` | Target lesson count per objective (default: 1, range: 1–4) |
 | `1111_learn_agent_user_id` | User ID of the 1111 Agent user (set on activation) |
 | `1111_learn_telemetry_enabled` | Boolean — telemetry opt-in status |
 | `1111_learn_telemetry_consent_at` | ISO 8601 timestamp of consent |
@@ -1319,8 +1325,8 @@ Headers:
 
 Body:
 {
-  "model": "{configured_model}",
-  "max_tokens": {configured_max_tokens},
+  "model": "{LEARN_FAST_MODEL or LEARN_DEFAULT_MODEL}",
+  "max_tokens": {LEARN_PLAN_MAX_TOKENS or LEARN_CONTENT_MAX_TOKENS},
   "system": "{contents_of_prompt_md_file}",
   "messages": [
     {
@@ -1784,7 +1790,7 @@ The Learn plugin is designed so the Administrator plugin can build on top of its
 - [ ] Create 1111 Agent user and `1111_learn_agent` role on activation
 - [ ] Create `_1111_learn_submissions` custom table on activation (see Section 9.3)
 - [ ] Clean up agent user, role, and custom table on uninstall
-- [ ] Settings page with encrypted API key storage, model selectors, and lessons-per-objective
+- [ ] Settings page with encrypted API key storage and data sharing opt-in
 - [ ] Restrict admin UI to main site only (`is_main_site()` checks)
 - [ ] `CLAUDE.md` for the new repo
 - [ ] `README.md` with install instructions (including Multisite setup)
