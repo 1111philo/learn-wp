@@ -1342,7 +1342,8 @@ Body:
 
 - API key stored encrypted in `wp_options` (`sodium_crypto_secretbox` if available, `AUTH_KEY`-based fallback)
 - API key never exposed in client-side JavaScript — all calls server-side via AJAX
-- All AJAX endpoints verify nonces and `manage_options` capability
+- Admin AJAX endpoints (generation, settings, feedback) verify nonces and `manage_options` capability
+- Learner AJAX endpoints (assessment submission) verify nonces and that the user is a member of the submitting subsite
 - Prompt files loaded from plugin directory, never from user input
 
 ---
@@ -1351,13 +1352,37 @@ Body:
 
 ### 11.1 Pipeline Architecture
 
-The pipeline follows 1111 School's generation service design: each step commits progress to the database, and errors at any step are recoverable without re-running completed steps.
+The pipeline must work entirely within WordPress's execution model. A course with 3 objectives and 2 lessons per objective requires 20+ Anthropic API calls, each taking seconds. This far exceeds PHP's `max_execution_time` on any standard host. The pipeline uses **WordPress's background processing pattern**: each step is a discrete unit of work dispatched via `wp_schedule_single_event()` (WP-Cron) or a loopback `wp_remote_post()` to a non-blocking AJAX handler that spawns the next step.
 
-**AJAX Endpoint:** `1111_generate_course`
+**Execution model:**
+
+1. Admin clicks "Generate Course" → AJAX handler validates input, creates the course term, stores generation state in term meta, and schedules the first step.
+2. Each step runs as its own PHP request: call one agent, validate output, save to database, schedule the next step.
+3. Progress is stored in a transient after each step. The client polls for updates (Section 11.7).
+4. If a step fails, the generation state records which step failed. The admin can retry from the failed step.
+
+This follows the same pattern used by WordPress core updates, WooCommerce background processing, and other plugins that handle long-running work. No single PHP request runs more than one agent call.
 
 ```
-Request → Validate → Create Course Term → Phase 0 → Per-Objective Loop → Phase Final → Complete
+AJAX Request → Validate → Create Course Term → Schedule Phase 0
+  ↓
+Phase 0 (own request): Course Describer → save → schedule Per-Objective
+  ↓
+Per-Objective (own request each): Planner → save → schedule Per-Lesson
+  ↓
+Per-Lesson (own request each): Writer → save → schedule Activity
+  ↓
+Activity (own request each): Creator → Reviewer → save → schedule next
+  ↓
+Phase Final (own request): Assessment Creator → save → mark complete
 ```
+
+**Why not a single long-running AJAX request?** PHP's `max_execution_time` (typically 30–60 seconds on shared hosts) would kill the process mid-pipeline. Even with `set_time_limit(0)`, many hosts enforce hard limits at the web server level. The step-per-request model works on every WordPress host, including shared hosting, and is the standard WordPress pattern for background work.
+
+**AJAX Endpoints:**
+- `1111_generate_course` — validates input, creates course term, kicks off pipeline
+- `1111_generation_step` — executes one pipeline step (called by WP-Cron or loopback)
+- `1111_generation_status` — returns current progress (polled by client)
 
 ### 11.2 Phase 0: Course Description
 
@@ -1439,9 +1464,9 @@ Following School's incremental recovery pattern:
 
 ### 11.7 Progress Reporting
 
-Progress is reported via **polling** (WordPress hosting compatible):
+Progress is reported via **transient + polling** — standard WordPress patterns, no WebSockets or server-sent events:
 
-- Generation updates a transient (`_1111_generation_progress_{term_id}`) after each step
+- Each pipeline step updates a transient (`_1111_generation_progress_{term_id}`) before scheduling the next step
 - Client polls `wp_ajax_1111_generation_status` every 2 seconds
 - Progress payload:
 
@@ -1539,7 +1564,7 @@ Generated content consumed by learners (Persona 3.2) must also meet WCAG 2.1 AA.
 
 ## 14. Security Requirements
 
-1. **Capability checks:** All admin pages and AJAX handlers require `manage_options` capability. Content modification is restricted to the 1111 Agent user via the `wp_insert_post_data` filter.
+1. **Capability checks:** Admin pages and generation/feedback AJAX handlers require `manage_options`. Learner-facing endpoints (assessment submission) require the user to be a member of the relevant subsite. Content modification is restricted to the 1111 Agent user via the `wp_insert_post_data` filter.
 2. **Nonce verification:** All form submissions and AJAX requests nonce-protected, including feedback submission.
 3. **Input sanitization:** `sanitize_text_field()`, `sanitize_textarea_field()`, `wp_kses_post()` as appropriate. Feedback text is sanitized with `sanitize_textarea_field()` before being passed to agents.
 4. **Output escaping:** `esc_html()`, `esc_attr()`, `esc_url()`, `wp_kses_post()` as appropriate.
