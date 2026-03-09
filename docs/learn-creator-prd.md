@@ -28,7 +28,7 @@ The WordPress plugin takes the best of both: the narrative threading and backwar
 ## 2. Goals
 
 1. Let a WordPress administrator create a complete, structured course from three inputs: title, description, and learning objectives.
-2. Generate pedagogically sound lesson content using a four-agent pipeline, with prompts stored as editable Markdown files so non-developers can iterate on output quality.
+2. Generate pedagogically sound lesson content using a four-agent pipeline, with prompts stored as editable Markdown files so AI agents can iterate on output quality through telemetry-driven PRs.
 3. Use backward design (define mastery → design evidence → build the path) to ensure lessons and activities are aligned to objectives.
 4. Thread a narrative arc across all lessons so the course reads as a coherent journey, not disconnected topics.
 5. Produce standard WordPress posts (custom post type `learn`) organized under a `course` taxonomy — compatible with any theme, page builder, or LMS plugin.
@@ -56,10 +56,10 @@ The WordPress plugin takes the best of both: the narrative threading and backwar
 
 > Although the learner never touches the plugin, every design decision — backward design, narrative threading, mastery-aligned activities, accessible markup — exists to serve this persona. The learner is the reason the plugin exists.
 
-### 3.3 Prompt Editor (Developer or Subject-Matter Expert)
-- Edits agent prompts in Markdown files to refine output quality
-- Tests prompts outside WordPress with any Claude client
-- Does not need to touch PHP to change agent behavior
+### 3.3 Developer (PR Reviewer)
+- Reviews agent-generated PRs that improve prompts based on telemetry data
+- Uses Claude Code for all development work on the plugin
+- Does not manually edit prompt files — AI agents propose changes, the developer reviews and merges
 
 ---
 
@@ -135,7 +135,7 @@ These principles are proven in production and must carry forward:
 - **Narrative threading:** The Course Describer identifies the PRIMARY objective and shows how others support it. Every lesson title and summary feels like a chapter in the same story.
 - **Scope control:** Each lesson covers ONLY its assigned objective. The planner receives the full objective list but is explicitly told not to teach other objectives. This prevents scope creep and repetition.
 - **Agents are functions, not frameworks:** Each agent takes typed input, returns typed output, validates against a schema, and retries on failure. No memory across invocations, no autonomous decisions.
-- **Prompts are data, not code:** System prompts live in Markdown files. Dynamic context (course data, objectives) goes in the user message. Changing agent behavior never requires touching PHP.
+- **Prompts are data, not code:** System prompts live in Markdown files. Dynamic context (course data, objectives) goes in the user message. Changing agent behavior never requires touching PHP — an AI agent can propose prompt improvements as a PR diff against `prompts/*.md`.
 - **Built to be improved by agents:** Every design choice — Markdown prompt files, structured JSON output, deterministic validation with specific error messages, telemetry that captures failure patterns — exists so that an AI agent can diagnose what's wrong and propose a fix. The plugin is not just *used* by AI agents; it's *maintained* by them through the telemetry → PR pipeline (Section 15).
 
 ### 4.4 Custom Post Type: `learn`
@@ -711,10 +711,10 @@ Progress is reported via **polling** (WordPress hosting compatible):
 
 ### 12.1 Why Markdown Files?
 
-- **Editable by non-developers:** Subject-matter experts can tweak prompts without touching PHP
-- **Version controlled:** Changes are tracked in git
-- **Testable independently:** Copy a prompt into the Anthropic Console to test outside WordPress
-- **Hot-reloadable:** Changes take effect on the next generation — no cache to clear
+- **Machine-readable and machine-editable:** AI agents can parse, modify, and propose improvements to Markdown far more reliably than embedded PHP strings
+- **Version controlled:** Changes are tracked in git, so every agent-proposed PR has a clear diff
+- **Testable independently:** Agents (or developers) can copy a prompt into the Anthropic Console to validate changes outside WordPress
+- **Hot-reloadable:** Changes take effect on the next generation — no cache to clear, so merged PRs improve output immediately
 
 ### 12.2 Prompt Files
 
@@ -886,8 +886,8 @@ Usage data (all installations)
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
-│  Human review (Persona 3.3) → merge             │
-│  Prompt editors verify pedagogical alignment     │
+│  Developer reviews PR → merge                    │
+│  Reviews diff, checks telemetry evidence cited   │
 └─────────────────────┬───────────────────────────┘
                       │
                       ▼
@@ -915,11 +915,11 @@ Usage data (all installations)
    - Reworded instructions where a specific failure pattern recurs
    - Each PR cites the telemetry evidence (e.g., "Lesson Planner `mastery_criteria` count validation fails 18% of the time — adding an explicit count reminder to the prompt")
 
-**Step 4 — Review:** PRs are reviewed by prompt editors (Persona 3.3) who verify pedagogical alignment. This is the only human step — everything before it is automated.
+**Step 4 — Review:** The developer (Persona 3.3) reviews the PR in GitHub — checking the diff, the telemetry evidence cited in the PR description, and the before/after reasoning. This is the only human step — everything before it is automated.
 
 **Step 5 — Ship and measure:** Merged prompt changes take effect immediately for all installations — no plugin update required, just a file change. Subsequent telemetry measures whether the change actually improved the target metric, closing the loop. If a change didn't help (or made things worse), the next analysis cycle will flag it for further iteration.
 
-> **Design principle:** The plugin is built to be improved by agents. Telemetry data, prompt files as editable Markdown, and structured validation errors are all designed so that an AI agent has everything it needs to diagnose a problem and propose a fix — without requiring a human to interpret logs or manually edit prompts.
+> **Design principle:** The plugin is built to be improved by agents. Telemetry data, prompt files as editable Markdown, and structured validation errors are all designed so that an AI agent has everything it needs to diagnose a problem and propose a fix. The developer's role is reviewing and merging PRs — not interpreting logs, manually editing prompts, or initiating the improvement cycle.
 
 ### 15.9 Content Edit Tracking
 
@@ -1078,7 +1078,7 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 5. All generated content is saved as standard WordPress draft posts — viewable in any theme, editable in the block editor.
 6. The plugin installs with zero configuration beyond entering an API key.
 7. All admin UI passes WCAG 2.1 AA.
-8. Agent prompts can be modified in Markdown files and changes take effect immediately.
+8. Agent prompts live in Markdown files; merged PRs take effect immediately on the next generation without a plugin update.
 9. A failed generation can be retried without losing already-generated lessons.
 10. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
 11. Prompt quality measurably improves over time: validation failure rates decrease, retry rates decrease, and the percentage of generated fields that admins edit before publishing decreases.
