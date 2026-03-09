@@ -83,6 +83,13 @@ require_once LEARN_PLUGIN_DIR . 'includes/class-prompt-loader.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-validator.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-orchestrator.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-admin-page.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-content-lock.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-learner-registration.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-content-copy.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-learner-panel.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-course-navigation.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-telemetry.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-assessment.php';
 
 /**
  * Plugin activation — network-wide.
@@ -190,6 +197,12 @@ add_action( 'wp_initialize_site', 'learn_new_site', 200 );
  */
 function learn_init() {
 	Learn_Post_Type::register();
+	Learn_Content_Lock::init();
+	Learn_Learner_Registration::init();
+	Learn_Learner_Panel::init();
+	Learn_Course_Navigation::init();
+	Learn_Telemetry::init();
+	Learn_Assessment::init();
 }
 add_action( 'init', 'learn_init' );
 

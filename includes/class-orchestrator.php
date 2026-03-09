@@ -672,7 +672,7 @@ class Learn_Orchestrator {
 	 * @param int    $term_id Course term ID.
 	 * @param string $step    Next step identifier.
 	 */
-	private static function schedule_next( $term_id, $step ) {
+	public static function schedule_next( $term_id, $step ) {
 		wp_schedule_single_event( time(), '1111_learn_generation_step', array( $term_id, $step ) );
 		spawn_cron();
 	}
@@ -934,6 +934,16 @@ class Learn_Orchestrator {
 	 * @param array $assessment Assessment data.
 	 * @return string Block markup.
 	 */
+	public static function build_assessment_block_content_static( $assessment ) {
+		return self::build_assessment_block_content( $assessment );
+	}
+
+	/**
+	 * Build block content for the assessment post.
+	 *
+	 * @param array $assessment Assessment data.
+	 * @return string Block markup.
+	 */
 	private static function build_assessment_block_content( $assessment ) {
 		$blocks = array();
 
@@ -995,6 +1005,13 @@ class Learn_Orchestrator {
 			$msg .= "\nFeedback on previous plan: $feedback";
 		}
 		return $msg;
+	}
+
+	/**
+	 * Build user message for Lesson Writer.
+	 */
+	public static function build_lesson_writer_input_static( $narrative, $lesson_title, $lesson_outline, $mastery, $key_concepts, $feedback = '' ) {
+		return self::build_lesson_writer_input( $narrative, $lesson_title, $lesson_outline, $mastery, $key_concepts, $feedback );
 	}
 
 	/**

@@ -24,6 +24,7 @@ class Learn_Admin_Page {
 		add_action( 'wp_ajax_1111_generation_status', array( __CLASS__, 'ajax_generation_status' ) );
 		add_action( 'wp_ajax_1111_publish_course', array( __CLASS__, 'ajax_publish_course' ) );
 		add_action( 'wp_ajax_1111_retry_generation', array( __CLASS__, 'ajax_retry_generation' ) );
+		add_action( 'wp_ajax_1111_submit_feedback', array( __CLASS__, 'ajax_submit_feedback' ) );
 	}
 
 	/**
@@ -396,5 +397,395 @@ class Learn_Admin_Page {
 		}
 
 		return $progress;
+	}
+
+	/**
+	 * AJAX: Submit feedback at any level and trigger regeneration.
+	 */
+	public static function ajax_submit_feedback() {
+		check_ajax_referer( '1111_learn_feedback', 'nonce' );
+
+		if ( ! current_user_can( 'read' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'learn' ) ), 403 );
+		}
+
+		$level    = isset( $_POST['level'] ) ? sanitize_text_field( wp_unslash( $_POST['level'] ) ) : '';
+		$feedback = isset( $_POST['feedback'] ) ? sanitize_textarea_field( wp_unslash( $_POST['feedback'] ) ) : '';
+
+		if ( ! $feedback ) {
+			wp_send_json_error( array( 'message' => __( 'Feedback text is required.', 'learn' ) ), 400 );
+		}
+
+		$valid_levels = array( 'course', 'plan', 'lesson', 'activity', 'assessment' );
+		if ( ! in_array( $level, $valid_levels, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid feedback level.', 'learn' ) ), 400 );
+		}
+
+		switch ( $level ) {
+			case 'course':
+				$result = self::handle_course_feedback( $feedback );
+				break;
+			case 'plan':
+				$result = self::handle_plan_feedback( $feedback );
+				break;
+			case 'lesson':
+				$result = self::handle_lesson_feedback( $feedback );
+				break;
+			case 'activity':
+				$result = self::handle_activity_feedback( $feedback );
+				break;
+			case 'assessment':
+				$result = self::handle_assessment_feedback( $feedback );
+				break;
+			default:
+				$result = new WP_Error( 'invalid_level', __( 'Invalid feedback level.', 'learn' ) );
+		}
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * Handle course-level feedback — re-run entire pipeline.
+	 *
+	 * @param string $feedback Feedback text.
+	 * @return array|WP_Error
+	 */
+	private static function handle_course_feedback( $feedback ) {
+		$term_id = isset( $_POST['course_term_id'] ) ? absint( $_POST['course_term_id'] ) : 0;
+		if ( ! $term_id ) {
+			return new WP_Error( 'missing_term', __( 'Course term ID required.', 'learn' ) );
+		}
+
+		// Only super admins can regenerate on the main site.
+		if ( is_main_site() && ! is_super_admin() ) {
+			return new WP_Error( 'permission', __( 'Permission denied.', 'learn' ) );
+		}
+
+		update_term_meta( $term_id, '_1111_course_feedback', $feedback );
+		update_term_meta( $term_id, '_1111_generation_status', 'generating' );
+
+		Learn_Orchestrator::schedule_next( $term_id, 'phase_0' );
+
+		return array( 'message' => __( 'Course regeneration started.', 'learn' ) );
+	}
+
+	/**
+	 * Handle plan-level feedback — re-run planner + downstream for one objective.
+	 *
+	 * @param string $feedback Feedback text.
+	 * @return array|WP_Error
+	 */
+	private static function handle_plan_feedback( $feedback ) {
+		$group_term_id = isset( $_POST['group_term_id'] ) ? absint( $_POST['group_term_id'] ) : 0;
+		if ( ! $group_term_id ) {
+			return new WP_Error( 'missing_group', __( 'Lesson group term ID required.', 'learn' ) );
+		}
+
+		$course_term_id  = get_term_meta( $group_term_id, '_1111_course_term_id', true );
+		$objective_index = get_term_meta( $group_term_id, '_1111_objective_index', true );
+
+		if ( ! $course_term_id ) {
+			return new WP_Error( 'invalid_group', __( 'Invalid lesson group.', 'learn' ) );
+		}
+
+		update_term_meta( $group_term_id, '_1111_plan_feedback', $feedback );
+		update_term_meta( $course_term_id, '_1111_generation_status', 'generating' );
+
+		// Delete existing posts for this group so they get regenerated.
+		$existing_posts = get_posts( array(
+			'post_type'   => 'learn',
+			'post_status' => 'any',
+			'numberposts' => -1,
+			'fields'      => 'ids',
+			'tax_query'   => array(
+				array( 'taxonomy' => 'lesson_group', 'terms' => $group_term_id ),
+			),
+		) );
+
+		foreach ( $existing_posts as $pid ) {
+			wp_delete_post( $pid, true );
+		}
+
+		Learn_Orchestrator::schedule_next( $course_term_id, 'plan_' . $objective_index );
+
+		return array( 'message' => __( 'Plan regeneration started.', 'learn' ) );
+	}
+
+	/**
+	 * Handle lesson-level feedback — re-run Lesson Writer only.
+	 *
+	 * @param string $feedback Feedback text.
+	 * @return array|WP_Error
+	 */
+	private static function handle_lesson_feedback( $feedback ) {
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( ! $post_id ) {
+			return new WP_Error( 'missing_post', __( 'Post ID required.', 'learn' ) );
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post || 'learn' !== $post->post_type ) {
+			return new WP_Error( 'invalid_post', __( 'Invalid post.', 'learn' ) );
+		}
+
+		// Get lesson context.
+		$group_terms = wp_get_object_terms( $post_id, 'lesson_group', array( 'fields' => 'ids' ) );
+		$course_terms = wp_get_object_terms( $post_id, 'course', array( 'fields' => 'ids' ) );
+
+		if ( empty( $group_terms ) || empty( $course_terms ) ) {
+			return new WP_Error( 'missing_terms', __( 'Post missing taxonomy terms.', 'learn' ) );
+		}
+
+		$group_term_id = $group_terms[0];
+		$course_term_id = $course_terms[0];
+		$plan = get_term_meta( $group_term_id, '_1111_lesson_plan_raw', true );
+		$narrative = get_term_meta( $course_term_id, '_1111_narrative_description', true );
+
+		if ( ! $plan ) {
+			return new WP_Error( 'no_plan', __( 'No lesson plan found.', 'learn' ) );
+		}
+
+		// Find which lesson in the plan this post is.
+		$lesson_index = 0;
+		foreach ( $plan['lessons'] as $i => $lesson ) {
+			if ( $lesson['lesson_title'] === $post->post_title ) {
+				$lesson_index = $i;
+				break;
+			}
+		}
+
+		$lesson_outline = $plan['lessons'][ $lesson_index ];
+
+		$prompt = Learn_Prompt_Loader::load( 'lesson-writer' );
+		if ( is_wp_error( $prompt ) ) {
+			return $prompt;
+		}
+
+		$user_message = Learn_Orchestrator::build_lesson_writer_input_static(
+			$narrative,
+			$lesson_outline['lesson_title'],
+			$lesson_outline['lesson_outline'],
+			$plan['mastery_criteria'],
+			$plan['key_concepts'],
+			$feedback
+		);
+
+		$result = Learn_API_Client::call_agent( $prompt, $user_message, LEARN_DEFAULT_MODEL, LEARN_CONTENT_MAX_TOKENS );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		$valid = Learn_Validator::validate_lesson_writer( $result );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		$block_content = Learn_Orchestrator::markdown_to_blocks( $result['lesson_body'] );
+		$agent_user_id = Learn_Agent_User::get_id();
+
+		wp_update_post( array(
+			'ID'           => $post_id,
+			'post_title'   => $result['lesson_title'],
+			'post_content' => wp_kses_post( $block_content ),
+			'post_author'  => $agent_user_id,
+		) );
+
+		$version = (int) get_post_meta( $post_id, '_1111_lesson_version', true );
+		update_post_meta( $post_id, '_1111_lesson_version', $version + 1 );
+		update_post_meta( $post_id, '_1111_key_takeaways', $result['key_takeaways'] );
+
+		return array( 'message' => __( 'Lesson regenerated.', 'learn' ) );
+	}
+
+	/**
+	 * Handle activity-level feedback — re-run Activity Creator + Reviewer.
+	 *
+	 * @param string $feedback Feedback text.
+	 * @return array|WP_Error
+	 */
+	private static function handle_activity_feedback( $feedback ) {
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( ! $post_id ) {
+			return new WP_Error( 'missing_post', __( 'Post ID required.', 'learn' ) );
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post || 'learn' !== $post->post_type ) {
+			return new WP_Error( 'invalid_post', __( 'Invalid post.', 'learn' ) );
+		}
+
+		$group_terms  = wp_get_object_terms( $post_id, 'lesson_group', array( 'fields' => 'ids' ) );
+		$course_terms = wp_get_object_terms( $post_id, 'course', array( 'fields' => 'ids' ) );
+
+		if ( empty( $group_terms ) || empty( $course_terms ) ) {
+			return new WP_Error( 'missing_terms', __( 'Post missing taxonomy terms.', 'learn' ) );
+		}
+
+		$group_term_id  = $group_terms[0];
+		$course_term_id = $course_terms[0];
+		$plan = get_term_meta( $group_term_id, '_1111_lesson_plan_raw', true );
+		$work_product = get_term_meta( $course_term_id, '_1111_work_product', true );
+		$work_product_type = get_term_meta( $course_term_id, '_1111_work_product_type', true );
+
+		if ( ! $plan ) {
+			return new WP_Error( 'no_plan', __( 'No lesson plan found.', 'learn' ) );
+		}
+
+		// Re-create activity with feedback.
+		$activity_type = get_post_meta( $post_id, '_1111_activity_type', true );
+
+		$prompt = Learn_Prompt_Loader::load( 'activity-creator' );
+		if ( is_wp_error( $prompt ) ) {
+			return $prompt;
+		}
+
+		$user_message  = "Learning objective: " . $plan['learning_objective'] . "\n\n";
+		$user_message .= "Activity type: $activity_type\n\n";
+		$user_message .= "Work product: $work_product\n";
+		$user_message .= "Work product type: $work_product_type\n\n";
+		$user_message .= "Mastery criteria:\n";
+		foreach ( $plan['mastery_criteria'] as $item ) {
+			$user_message .= "- $item\n";
+		}
+		$user_message .= "\nActivity seed:\n" . wp_json_encode( $plan['suggested_activity'], JSON_PRETTY_PRINT ) . "\n";
+		$user_message .= "\nFeedback on previous activity: $feedback";
+
+		$result = Learn_API_Client::call_agent( $prompt, $user_message, LEARN_FAST_MODEL, LEARN_PLAN_MAX_TOKENS );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		$valid = Learn_Validator::validate_activity_creator( $result );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		update_post_meta( $post_id, '_1111_activity', $result );
+		update_post_meta( $post_id, '_1111_activity_type', $result['activity_type'] );
+		update_post_meta( $post_id, '_1111_xp_value', $result['xp_value'] );
+		update_post_meta( $post_id, '_1111_milestone', isset( $result['milestone'] ) ? $result['milestone'] : null );
+		update_post_meta( $post_id, '_1111_portfolio_contribution', $result['portfolio_contribution'] );
+
+		$version = (int) get_post_meta( $post_id, '_1111_activity_version', true );
+		update_post_meta( $post_id, '_1111_activity_version', $version + 1 );
+
+		return array( 'message' => __( 'Activity regenerated.', 'learn' ) );
+	}
+
+	/**
+	 * Handle assessment-level feedback — re-run Assessment Creator.
+	 *
+	 * @param string $feedback Feedback text.
+	 * @return array|WP_Error
+	 */
+	private static function handle_assessment_feedback( $feedback ) {
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		$course_term_id = isset( $_POST['course_term_id'] ) ? absint( $_POST['course_term_id'] ) : 0;
+
+		if ( ! $post_id || ! $course_term_id ) {
+			return new WP_Error( 'missing_ids', __( 'Post ID and course term ID required.', 'learn' ) );
+		}
+
+		update_term_meta( $course_term_id, '_1111_assessment_feedback', $feedback );
+
+		// Re-run assessment creator as a single inline call.
+		$term = get_term( $course_term_id, 'course' );
+		if ( ! $term || is_wp_error( $term ) ) {
+			return new WP_Error( 'invalid_term', __( 'Course not found.', 'learn' ) );
+		}
+
+		$narrative    = get_term_meta( $course_term_id, '_1111_narrative_description', true );
+		$objectives   = get_term_meta( $course_term_id, '_1111_learning_objectives', true );
+		$work_product = get_term_meta( $course_term_id, '_1111_work_product', true );
+		$wp_type      = get_term_meta( $course_term_id, '_1111_work_product_type', true );
+
+		$lesson_posts = get_posts( array(
+			'post_type'   => 'learn',
+			'post_status' => array( 'draft', 'publish' ),
+			'numberposts' => -1,
+			'tax_query'   => array( array( 'taxonomy' => 'course', 'terms' => $course_term_id ) ),
+			'orderby'     => 'menu_order',
+			'order'       => 'ASC',
+		) );
+
+		$all_mastery    = array();
+		$all_activities = array();
+		foreach ( $lesson_posts as $lp ) {
+			if ( 'final' === get_post_meta( $lp->ID, '_1111_activity_type', true ) ) {
+				continue;
+			}
+			$obj_idx  = (int) get_post_meta( $lp->ID, '_1111_objective_index', true );
+			$mastery  = get_post_meta( $lp->ID, '_1111_mastery_criteria', true );
+			$activity = get_post_meta( $lp->ID, '_1111_activity', true );
+			if ( $mastery && ! isset( $all_mastery[ $obj_idx ] ) ) {
+				$all_mastery[ $obj_idx ] = array( 'objective' => $objectives[ $obj_idx ], 'criteria' => $mastery );
+			}
+			if ( $activity ) {
+				$all_activities[] = array(
+					'lesson_title'           => $lp->post_title,
+					'activity_type'          => $activity['activity_type'],
+					'prompt'                 => $activity['prompt'],
+					'portfolio_contribution' => $activity['portfolio_contribution'],
+				);
+			}
+		}
+
+		$prompt = Learn_Prompt_Loader::load( 'assessment-creator' );
+		if ( is_wp_error( $prompt ) ) {
+			return $prompt;
+		}
+
+		$user_message  = "Course title: " . $term->name . "\n\n";
+		$user_message .= "Course description: $narrative\n\n";
+		$user_message .= "Work product: $work_product\nWork product type: $wp_type\n\n";
+		$user_message .= "Learning objectives:\n";
+		foreach ( $objectives as $i => $obj ) {
+			$user_message .= ( $i + 1 ) . ". $obj\n";
+		}
+		$user_message .= "\nMastery criteria:\n";
+		foreach ( $all_mastery as $m ) {
+			$user_message .= 'Objective: ' . $m['objective'] . "\n";
+			foreach ( $m['criteria'] as $c ) {
+				$user_message .= "  - $c\n";
+			}
+		}
+		$user_message .= "\nActivities:\n";
+		foreach ( $all_activities as $a ) {
+			$user_message .= "- [{$a['activity_type']}] {$a['lesson_title']}: {$a['prompt']}\n";
+		}
+		$user_message .= "\nFeedback on previous assessment: $feedback";
+
+		$result = Learn_API_Client::call_agent( $prompt, $user_message, LEARN_DEFAULT_MODEL, LEARN_CONTENT_MAX_TOKENS );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		$valid = Learn_Validator::validate_assessment_creator( $result, count( $objectives ) );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		$agent_user_id      = Learn_Agent_User::get_id();
+		$assessment_content = Learn_Orchestrator::build_assessment_block_content_static( $result );
+
+		wp_update_post( array(
+			'ID'           => $post_id,
+			'post_title'   => $result['assessment_title'],
+			'post_content' => wp_kses_post( $assessment_content ),
+			'post_author'  => $agent_user_id,
+		) );
+
+		update_post_meta( $post_id, '_1111_activity', $result );
+		update_term_meta( $course_term_id, '_1111_assessment', $result );
+		delete_term_meta( $course_term_id, '_1111_assessment_feedback' );
+
+		$version = (int) get_post_meta( $post_id, '_1111_activity_version', true );
+		update_post_meta( $post_id, '_1111_activity_version', $version + 1 );
+
+		return array( 'message' => __( 'Assessment regenerated.', 'learn' ) );
 	}
 }

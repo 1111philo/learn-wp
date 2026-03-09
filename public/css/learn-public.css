@@ -1,0 +1,348 @@
+/**
+ * Learn public styles — frontend course navigation and learner UI.
+ *
+ * Minimal default styling with semantic CSS classes for theme overriding.
+ *
+ * @package Learn
+ */
+
+/* Course landing page */
+.learn-course-landing {
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.learn-course-title {
+	margin-bottom: 8px;
+}
+
+.learn-course-narrative {
+	margin-bottom: 20px;
+	color: #444;
+	line-height: 1.7;
+}
+
+.learn-work-product-info {
+	background: #f7f7f7;
+	border-left: 4px solid #333;
+	padding: 16px 20px;
+	margin-bottom: 24px;
+}
+
+.learn-work-product-info h3 {
+	margin-top: 0;
+}
+
+.learn-course-meta {
+	display: flex;
+	gap: 20px;
+	margin-bottom: 24px;
+	color: #666;
+	font-size: 14px;
+}
+
+/* Lesson list */
+.learn-lesson-list ol {
+	list-style: none;
+	padding: 0;
+}
+
+.learn-lesson-item {
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	margin-bottom: 6px;
+}
+
+.learn-lesson-item a {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 16px;
+	text-decoration: none;
+	color: inherit;
+}
+
+.learn-lesson-item a:hover {
+	background: #f7f7f7;
+}
+
+.learn-lesson-item--final {
+	border-color: #333;
+}
+
+.learn-lesson-number {
+	font-weight: 700;
+	color: #666;
+	min-width: 28px;
+}
+
+.learn-lesson-name {
+	flex: 1;
+}
+
+/* Badges (reused from admin) */
+.learn-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.learn-badge--explore { background: #e3f2fd; color: #1565c0; }
+.learn-badge--apply { background: #fff3e0; color: #e65100; }
+.learn-badge--create { background: #e8f5e9; color: #2e7d32; }
+.learn-badge--final { background: #333; color: #fff; }
+
+.learn-xp {
+	font-size: 12px;
+	color: #888;
+	margin-left: auto;
+}
+
+.learn-milestone {
+	font-size: 12px;
+	color: #666;
+	font-style: italic;
+}
+
+/* Lesson navigation (appended to content) */
+.learn-takeaways {
+	background: #f7f7f7;
+	border-radius: 4px;
+	padding: 16px 20px;
+	margin: 24px 0;
+}
+
+.learn-takeaways h2 {
+	font-size: 18px;
+	margin-top: 0;
+}
+
+.learn-takeaways ul {
+	margin-bottom: 0;
+}
+
+/* Activity block */
+.learn-activity-block {
+	background: #fafafa;
+	border: 2px solid #333;
+	border-radius: 6px;
+	padding: 20px 24px;
+	margin: 24px 0;
+}
+
+.learn-activity-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+}
+
+.learn-activity-header h2 {
+	margin: 0;
+	font-size: 18px;
+}
+
+.learn-activity-prompt {
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.6;
+}
+
+.learn-activity-instructions {
+	color: #555;
+}
+
+.learn-hints summary {
+	cursor: pointer;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+
+/* Submit button */
+.learn-submit-activity {
+	margin-top: 16px;
+	padding-top: 12px;
+	border-top: 1px solid #ddd;
+}
+
+.learn-submit-btn {
+	background: #333;
+	color: #fff;
+	border: none;
+	padding: 10px 24px;
+	border-radius: 4px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.learn-submit-btn:hover {
+	background: #555;
+}
+
+.learn-submit-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Assessment results */
+.learn-assessment-result {
+	margin-top: 16px;
+	padding: 16px 20px;
+	border-radius: 4px;
+	border: 1px solid #ddd;
+}
+
+.learn-result-score {
+	font-size: 24px;
+	font-weight: 700;
+	margin-bottom: 8px;
+}
+
+.learn-result-recommendation {
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: uppercase;
+	margin-bottom: 12px;
+}
+
+.learn-result-recommendation--advance { color: #2e7d32; }
+.learn-result-recommendation--continue { color: #e65100; }
+.learn-result-recommendation--revise { color: #c62828; }
+
+.learn-result-section {
+	margin-bottom: 12px;
+}
+
+.learn-result-section h4 {
+	margin: 0 0 6px;
+	font-size: 14px;
+}
+
+.learn-result-section ul {
+	margin: 0;
+	padding-left: 20px;
+}
+
+/* Lesson navigation bar */
+.learn-lesson-nav {
+	margin-top: 32px;
+	padding-top: 20px;
+	border-top: 2px solid #eee;
+}
+
+.learn-nav-progress {
+	text-align: center;
+	color: #888;
+	font-size: 13px;
+	margin-bottom: 12px;
+}
+
+.learn-nav-links {
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.learn-nav-prev,
+.learn-nav-next {
+	text-decoration: none;
+	color: #333;
+	font-weight: 600;
+	padding: 8px 0;
+}
+
+.learn-nav-prev:hover,
+.learn-nav-next:hover {
+	color: #000;
+}
+
+.learn-nav-next {
+	margin-left: auto;
+	text-align: right;
+}
+
+/* Registration form */
+.learn-register-form {
+	max-width: 400px;
+	margin: 0 auto;
+}
+
+.learn-reg-field {
+	margin-bottom: 16px;
+}
+
+.learn-reg-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.learn-reg-field input {
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 14px;
+}
+
+.learn-reg-submit {
+	background: #333;
+	color: #fff;
+	border: none;
+	padding: 10px 24px;
+	border-radius: 4px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	width: 100%;
+}
+
+.learn-reg-submit:hover {
+	background: #555;
+}
+
+#learn-register-errors {
+	background: #fef2f2;
+	border: 1px solid #fecaca;
+	color: #991b1b;
+	padding: 10px 14px;
+	border-radius: 4px;
+	margin-bottom: 16px;
+}
+
+#learn-register-success {
+	background: #f0fdf4;
+	border: 1px solid #86efac;
+	color: #166534;
+	padding: 10px 14px;
+	border-radius: 4px;
+	margin-bottom: 16px;
+}
+
+/* Course catalog (learner panel) */
+.learn-course-catalog {
+	display: grid;
+	gap: 16px;
+}
+
+.learn-catalog-item {
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	padding: 16px 20px;
+}
+
+.learn-catalog-item h3 {
+	margin-top: 0;
+}
+
+.learn-catalog-meta {
+	color: #888;
+	font-size: 13px;
+	margin-bottom: 12px;
+}
