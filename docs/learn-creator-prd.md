@@ -33,7 +33,7 @@ The WordPress plugin takes the best of both: the narrative threading and backwar
 4. Thread a narrative arc across all lessons so the course reads as a coherent journey, not disconnected topics.
 5. Produce standard WordPress posts (custom post type `learn`) organized under a `course` taxonomy — compatible with any theme, page builder, or LMS plugin.
 6. Keep the plugin self-contained: no build step, no JavaScript framework, no external dependencies beyond the Anthropic API.
-7. Meet WCAG 2.1 AA accessibility standards in all admin UI.
+7. Meet WCAG 2.1 AA accessibility standards in all admin UI and generated lesson content.
 
 ---
 
@@ -45,7 +45,17 @@ The WordPress plugin takes the best of both: the narrative threading and backwar
 - May not be technical — needs a simple, guided interface
 - Wants to review and edit generated content before publishing
 
-### 3.2 Prompt Editor (Developer or Subject-Matter Expert)
+### 3.2 Learner (End User)
+- Consumes published lesson content on the WordPress frontend — the ultimate audience for everything this plugin generates
+- May range from complete beginners to experienced practitioners depending on the course
+- Expects a clear narrative arc: each lesson builds on the last and prepares for the next
+- Needs activities that are challenging but achievable given the lesson content
+- May have accessibility needs (screen readers, keyboard navigation, low vision) — generated content must be consumable by all
+- **Does not interact with the plugin directly** — the learner experience is mediated entirely through WordPress posts and whatever theme or companion plugin (e.g., 1111 Learn Administrator) presents them
+
+> Although the learner never touches the plugin, every design decision — backward design, narrative threading, mastery-aligned activities, accessible markup — exists to serve this persona. The learner is the reason the plugin exists.
+
+### 3.3 Prompt Editor (Developer or Subject-Matter Expert)
 - Edits agent prompts in Markdown files to refine output quality
 - Tests prompts outside WordPress with any Claude client
 - Does not need to touch PHP to change agent behavior
@@ -738,6 +748,8 @@ Respond with ONLY valid JSON, no markdown fencing:
 
 ## 13. Accessibility Requirements
 
+### 13.1 Admin UI
+
 All admin UI must meet WCAG 2.1 AA:
 
 1. **Form inputs:** Every input has a visible `<label>` with `for` attribute matching the input `id`.
@@ -749,6 +761,18 @@ All admin UI must meet WCAG 2.1 AA:
 7. **Screen reader announcements:** Dynamic content changes (step completions, errors, success) announced.
 8. **Sufficient contrast:** All text meets 4.5:1 contrast ratio.
 9. **Responsive layout:** Dashboard usable at min-width 782px (WordPress admin breakpoint).
+
+### 13.2 Generated Lesson Content
+
+Generated content consumed by learners (Persona 3.2) must also meet WCAG 2.1 AA. Since the Lesson Writer outputs Markdown converted to WordPress blocks, the plugin enforces accessible output at the generation and conversion layers:
+
+1. **Heading hierarchy:** Lesson body starts at `##` (h2) — the post title occupies h1. No skipped heading levels. Enforced during Markdown-to-block conversion.
+2. **Image alt text:** If the Lesson Writer prompt ever produces image references, alt text is required. (Current agents are text-only, but this guard prevents future regressions.)
+3. **Link text:** Generated links must have descriptive text — never "click here" or bare URLs. Enforced as a validation rule on Lesson Writer output.
+4. **List structure:** Markdown lists are converted to proper `<ul>`/`<ol>` block markup, not paragraph text with dashes.
+5. **Code blocks:** Fenced code blocks are converted to `<!-- wp:code -->` blocks with `<pre><code>` — ensuring proper semantics and screen reader announcement.
+6. **Reading level:** Agent prompts instruct the Lesson Writer to use clear, plain language. Content should be understandable without specialized vocabulary unless the course topic demands it.
+7. **Logical reading order:** Content follows the lesson outline sequentially — no reliance on visual layout to convey meaning.
 
 ---
 
@@ -842,7 +866,7 @@ This is the core value of telemetry — a continuous feedback loop from real usa
    - Relaxed constraints where validation is too aggressive
    - Added examples where agents misinterpret the output format
    - Reworded instructions where a specific failure pattern recurs
-4. **Review:** PRs are reviewed by prompt editors (Persona 3.2) who can evaluate whether the proposed changes align with pedagogical goals.
+4. **Review:** PRs are reviewed by prompt editors (Persona 3.3) who can evaluate whether the proposed changes align with pedagogical goals.
 5. **Ship:** Merged prompt changes take effect immediately — no plugin update required, just a file change.
 
 ### 15.9 Content Edit Tracking
