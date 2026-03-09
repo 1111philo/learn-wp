@@ -14,8 +14,6 @@
 
 Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner builds **within WordPress itself**. The learner isn't just "completing exercises" — they're creating real WordPress content (pages, posts, even entire sites) that proves what they can do. The plugin runs on a **WordPress Multisite** network: the administrator creates courses on the main site, and each learner gets their own subsite where they build their portfolio work product. An Activity Assessment Agent evaluates the learner's WordPress content against the generated rubrics and mastery criteria.
 
-This follows the single-work-product pattern proven in 1111 Learn (Chrome extension), where all activities contribute to one persistent artifact that grows from first activity to final deliverable — but instead of an external tool like Google Docs, the work product lives inside WordPress where it can be assessed, displayed, and shared natively.
-
 ### 1.1 Lineage
 
 This plugin adapts proven agent patterns from two existing 1111 projects:
@@ -37,10 +35,8 @@ The WordPress plugin takes the best of both: the narrative threading, backward d
 6. Keep the plugin self-contained: no build step, no JavaScript framework, no external dependencies beyond the Anthropic API.
 7. Meet WCAG 2.1 AA accessibility standards in all admin UI and generated lesson content.
 8. Continuously self-improve through telemetry: collect anonymous usage data from real course generations, feed it back to learn-service, and use it to automatically create PRs that refine agent prompts — so every generation makes the next one better, without human intervention in the feedback loop.
-9. Make every activity and assessment a **portfolio artifact** — learners build concrete, demonstrable work products **within WordPress** (pages, posts, sites) that prove what they can do.
+9. Make every activity and assessment a **portfolio artifact** — learners build work products **within WordPress** on their own Multisite subsite. An Activity Assessment Agent evaluates their content against generated rubrics, providing scores, feedback, and advancement recommendations.
 10. Use **gamification mechanics** (progressive activity types, mastery scoring, achievement milestones, streaks) to sustain engagement and make learning feel like building toward a tangible accomplishment.
-11. Run on a **WordPress Multisite** network where each learner gets their own subsite to create portfolio content — the plugin assesses that content using an AI-powered Activity Assessment Agent.
-12. **Assess learner submissions** automatically: the Activity Assessment Agent reads the learner's WordPress content and evaluates it against the generated rubric and mastery criteria, providing scores, feedback, and advancement recommendations.
 
 ---
 
@@ -475,34 +471,7 @@ Admin feedback on previous plan (if any): Split the visual barriers into their o
 }
 ```
 
-**Expected output (JSON) — multi-lesson (lesson_count=2):**
-```json
-{
-  "learning_objective": "Identify and categorize at least five common web accessibility barriers...",
-  "key_concepts": ["..."],
-  "mastery_criteria": ["..."],
-  "suggested_activity": { "..." },
-  "lessons": [
-    {
-      "lesson_title": "Seeing the Visual Barriers",
-      "lesson_outline": [
-        "Start with a scenario: a user with low vision trying to read a low-contrast form",
-        "Walk through visual barriers: contrast, color-only indicators, missing alt text",
-        "Cover motor and keyboard barriers: small targets, keyboard traps, hover-only"
-      ]
-    },
-    {
-      "lesson_title": "Beyond What You Can See",
-      "lesson_outline": [
-        "Cover cognitive barriers: complex layouts, auto-playing media, inconsistent navigation",
-        "Cover auditory barriers: missing captions, audio-only content",
-        "Introduce WCAG as the unifying framework across all categories",
-        "Recap: all categories and how they interconnect"
-      ]
-    }
-  ]
-}
-```
+When `lesson_count` > 1, the output structure is identical but the `lessons` array contains multiple entries (e.g., "Seeing the Visual Barriers" + "Beyond What You Can See"), each with its own outline that together cover the full objective.
 
 **Key prompt rules (from 1111 School's lesson_planner):**
 - **Backward design order:** Step 1: mastery_criteria (what does mastery look like?), Step 2: suggested_activity (what would demonstrate mastery?), Step 3: lesson outlines (what knowledge closes the gap?)
@@ -1135,7 +1104,7 @@ When feedback is submitted at any level:
 6. The feedback field is cleared after successful regeneration
 7. A `content_regenerated` telemetry event is emitted (see Section 15.3) with the feedback level and which agents were re-run
 
-#### 8.4.7 Cascading Regeneration
+#### 8.4.8 Cascading Regeneration
 
 When feedback triggers regeneration at a higher level, all downstream content is regenerated:
 
@@ -1599,28 +1568,7 @@ Usage data (all installations)
 └───────────────────────────────────────────────────┘
 ```
 
-**Step 1 — Collect:** Telemetry events flow into learn-service from both the WordPress plugin and the Chrome extension. All installations contribute to the same improvement pool.
-
-**Step 2 — Analyze:** Scheduled analysis runs against aggregated telemetry to identify actionable patterns:
-   - Which agents have the highest validation failure rates?
-   - Which validation rules fire most often (e.g., `lesson_body` too short, `mastery_criteria` count out of range)?
-   - Do certain course topics (inferred from objective structure, not content) cause disproportionate failures?
-   - When admins edit generated content before publishing, which fields do they change most?
-   - Are retry attempts succeeding or failing with the same errors?
-   - After a previous prompt change shipped, did the target metric actually improve?
-
-**Step 3 — Propose:** An AI agent reads the current prompt files and the telemetry analysis, then creates a PR against the plugin repository targeting `prompts/*.md` with specific improvements:
-   - Tightened constraints where agents consistently under-deliver
-   - Relaxed constraints where validation is too aggressive
-   - Added examples where agents misinterpret the output format
-   - Reworded instructions where a specific failure pattern recurs
-   - Each PR cites the telemetry evidence (e.g., "Lesson Planner `mastery_criteria` count validation fails 18% of the time — adding an explicit count reminder to the prompt")
-
-**Step 4 — Review:** The developer (Persona 3.3) reviews the PR in GitHub — checking the diff, the telemetry evidence cited in the PR description, and the before/after reasoning. This is the only human step — everything before it is automated.
-
-**Step 5 — Ship and measure:** Merged prompt changes take effect immediately for all installations — no plugin update required, just a file change. Subsequent telemetry measures whether the change actually improved the target metric, closing the loop. If a change didn't help (or made things worse), the next analysis cycle will flag it for further iteration.
-
-> **Design principle:** The plugin is built to be improved by agents. Telemetry data, prompt files as editable Markdown, and structured validation errors are all designed so that an AI agent has everything it needs to diagnose a problem and propose a fix. The developer's role is reviewing and merging PRs — not interpreting logs, manually editing prompts, or initiating the improvement cycle.
+The diagram above shows the full cycle. The only human step is PR review — collection, analysis, proposal, and measurement are fully automated. Merged prompt changes take effect immediately for all installations (no plugin update required), and subsequent telemetry measures whether the change helped, closing the loop.
 
 ### 15.9 Feedback Tracking
 
@@ -1634,16 +1582,7 @@ Since admins cannot directly edit generated content, the telemetry signal shifts
 
 Tracked via `feedback_submitted` and `content_regenerated` telemetry events. Feedback text itself is **never** collected — only the level (course/plan/lesson/activity), the number of regeneration cycles, and which agents were re-run.
 
-### 15.10 Options (wp_options)
-
-| Option key | Description |
-|------------|-------------|
-| `1111_learn_telemetry_enabled` | Boolean — telemetry opt-in status |
-| `1111_learn_telemetry_consent_at` | ISO 8601 timestamp of consent |
-| `1111_learn_service_credential` | Encrypted anonymous credential from learn-service |
-| `1111_learn_anonymous_id` | Random installation identifier |
-
-### 15.11 Privacy Documentation
+### 15.10 Privacy Documentation
 
 Any change that adds, removes, or modifies collected data must update:
 
@@ -1832,18 +1771,11 @@ The Learn plugin is designed so the Administrator plugin can build on top of its
 2. Generated lessons follow a visible narrative arc — they read as chapters in the same course, not disconnected topics.
 3. Each lesson's content clearly prepares the learner for the associated activity. Backward design is evident.
 4. Activities have specific, checkable rubric criteria — not vague "practice what you learned."
-5. Every activity contributes to a single portfolio work product **built within WordPress** (pages, posts, or sites on the learner's subsite). The final assessment asks the learner to finalize and present that work product. A learner completing the course has a tangible WordPress artifact with a shareable URL.
-6. Activities follow a clear progression (`explore` → `apply` → `create` → `final`) with increasing XP values and achievement milestones that reflect genuine learning progress.
-7. The Activity Reviewer catches rubric-mastery misalignment before content reaches the admin — measurably reducing the need for admin feedback on activities.
-8. All generated content is saved as standard WordPress draft posts authored by the 1111 Agent user — viewable in any theme, reviewable in the block editor, improvable through feedback-driven regeneration.
-9. The plugin installs on a WordPress Multisite network with zero configuration beyond entering an API key.
-10. All admin UI passes WCAG 2.1 AA.
-11. Agent prompts live in Markdown files; merged PRs take effect immediately on the next generation without a plugin update.
-12. A failed generation can be retried without losing already-generated lessons.
-13. Administrators cannot directly edit generated post content — they provide feedback that triggers regeneration, and the output visibly improves with each feedback cycle.
-14. The block editor shows generated content as read-only with a clear feedback panel in the sidebar and activity/assessment feedback in meta boxes.
-15. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
-16. Prompt quality measurably improves over time: validation failure rates decrease, retry rates decrease, and the percentage of generated content that admins request feedback on decreases.
-17. The Activity Assessment Agent evaluates learner-submitted WordPress content and returns calibrated scores: a submission that clearly meets all rubric criteria scores 0.85+, while one missing key criteria scores below 0.5.
-18. Learners create real WordPress content (pages, posts) on their own subsites as directed by activity instructions — the portfolio is native to WordPress, not an external tool.
-19. Assessment results include actionable, specific feedback: strengths reference actual content the learner wrote, and improvements suggest concrete changes rather than vague encouragement.
+5. Every activity contributes to a single portfolio work product built within WordPress. A learner completing the course has a tangible WordPress artifact with a shareable URL.
+6. The Activity Reviewer catches rubric-mastery misalignment before content reaches the admin — measurably reducing the need for admin feedback on activities.
+7. The plugin installs on a WordPress Multisite network with zero configuration beyond entering an API key.
+8. All admin UI passes WCAG 2.1 AA.
+9. A failed generation can be retried without losing already-generated lessons.
+10. Feedback-driven regeneration visibly improves output with each cycle.
+11. Prompt quality measurably improves over time via the telemetry → PR pipeline: validation failure rates, retry rates, and feedback rates all decrease.
+12. The Activity Assessment Agent returns calibrated scores (0.85+ for strong submissions, below 0.5 for weak ones) with actionable, specific feedback referencing actual learner content.
