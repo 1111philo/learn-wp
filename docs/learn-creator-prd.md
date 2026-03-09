@@ -2,7 +2,7 @@
 
 ## WordPress Plugin for AI-Powered Course Content Creation
 
-**Version:** 0.2.0-draft
+**Version:** 0.3.0-draft
 **Date:** 2026-03-09
 **Status:** Draft — awaiting review
 
@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-**1111 Learn Creator** is a WordPress plugin that adds a "Learn" custom post type and a "Courses" taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A four-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, and practice activities — all saved as WordPress posts organized under the appropriate Course taxonomy term.
+**1111 Learn Creator** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A four-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, and practice activities — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
 
 This plugin is **content-creation only** — it does not include assessments, learner profiles, progress tracking, or any learner-facing interactive features. Those concerns belong to a future companion plugin (1111 Learn Administrator).
 
@@ -44,7 +44,8 @@ The WordPress plugin takes the best of both: the narrative threading and backwar
 - Has WordPress admin access
 - Knows the subject matter and can write learning objectives
 - May not be technical — needs a simple, guided interface
-- Wants to review and edit generated content before publishing
+- Reviews generated content and provides **feedback** to trigger regeneration — does not directly edit generated post content
+- Adds feedback at the appropriate level: course description, lesson plan, written lesson, or activity
 
 ### 3.2 Learner (End User)
 - Consumes published lesson content on the WordPress frontend — the ultimate audience for everything this plugin generates
@@ -60,6 +61,24 @@ The WordPress plugin takes the best of both: the narrative threading and backwar
 - Reviews agent-generated PRs that improve prompts based on telemetry data
 - Uses Claude Code for all development work on the plugin
 - Does not manually edit prompt files — AI agents propose changes, the developer reviews and merges
+
+### 3.4 1111 Agent User (System User)
+
+The plugin creates a dedicated WordPress user on activation — the **1111 Agent** user. This is the only user that owns and edits generated post content.
+
+- **Username:** `1111-learn-agent`
+- **Role:** Custom role `1111_learn_agent` with capabilities: `edit_learn_posts`, `edit_published_learn_posts`, `publish_learn_posts`, `delete_learn_posts`, `read`
+- **Email:** `agent@1111-learn.local` (non-routable, placeholder)
+- **Created on:** Plugin activation (`register_activation_hook`)
+- **Removed on:** Plugin uninstall (`uninstall.php`)
+
+All generated posts (`learn` CPT) are authored by this user. The `post_author` is set to the agent user's ID during generation, and the agent user is the only user with the `edit_learn_posts` capability for posts it authored. Human administrators **cannot directly edit** the `post_content`, `post_title`, or `post_excerpt` of agent-authored posts. Instead, they provide feedback that triggers regeneration (see Section 8.4).
+
+**Why an agent user?**
+- Creates a clean audit trail: every generated post is clearly marked as AI-authored
+- Enforces the feedback-driven workflow — if you can't directly edit, you must provide feedback, which flows through the pipeline and produces better output
+- The agent user's edit history becomes telemetry data: when the agent rewrites a post, the revision diff shows exactly what changed
+- Future companion plugins (1111 Learn Administrator) can identify AI-generated content by author
 
 ---
 
@@ -78,41 +97,54 @@ Admin Input (title, description, objectives)
 │  (fast model)                                    │
 │  Establishes narrative arc + lesson titles        │
 │  Output: narrative_description, lesson_previews   │
+│  ◄── Course feedback triggers re-run             │
 └─────────────────────┬───────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
 │  Agent 2: Lesson Planner (per objective)         │
 │  (fast model)                                    │
-│  Backward design: mastery → activity → outline    │
-│  Output: mastery_criteria, activity_seed, outline │
+│  Backward design: mastery → activity → outline(s)│
+│  May produce 1–4 lessons per objective            │
+│  Output: mastery_criteria, activity_seed, lessons │
+│  ◄── Lesson plan feedback triggers re-run        │
 └─────────────────────┬───────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
-│  Agent 3: Lesson Writer (per objective)          │
+│  Agent 3: Lesson Writer (per lesson)             │
 │  (default model — needs more tokens)             │
 │  Writes full lesson content from the plan         │
 │  Output: lesson_body, key_takeaways               │
+│  ◄── Lesson feedback triggers re-run             │
 └─────────────────────┬───────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
-│  Agent 4: Activity Creator (per objective)       │
+│  Agent 4: Activity Creator (per lesson)          │
 │  (fast model)                                    │
 │  Designs practice activity from activity seed     │
 │  Output: prompt, instructions, rubric, hints      │
+│  ◄── Activity feedback triggers re-run           │
 └─────────────────────┬───────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
-│  WordPress Posts (CPT: learn, Taxonomy: course)   │
+│  WordPress Posts (CPT: learn)                     │
+│  Author: 1111 Agent user (content locked)         │
+│  Taxonomies: course + lesson_group                │
 │                                                   │
 │  Course: "Web Accessibility Fundamentals"         │
-│    ├── Lesson 1 + Activity (draft)                │
-│    ├── Lesson 2 + Activity (draft)                │
-│    ├── Lesson 3 + Activity (draft)                │
-│    └── Lesson 4 + Activity (draft)                │
+│    ├── Lesson Group: "Seeing the Barriers"        │
+│    │   ├── Lesson 1a + Activity (draft)           │
+│    │   └── Lesson 1b + Activity (draft)           │
+│    ├── Lesson Group: "Auditing with Browser Tools"│
+│    │   └── Lesson 2 + Activity (draft)            │
+│    └── Lesson Group: "Writing Fix Recommendations"│
+│        └── Lesson 3 + Activity (draft)            │
+│                                                   │
+│  Admin provides FEEDBACK → triggers regeneration  │
+│  Admin CANNOT directly edit post content          │
 └───────────────────────────────────────────────────┘
 ```
 
@@ -163,6 +195,34 @@ These principles are proven in production and must carry forward:
 | Public | `true` |
 | Show in REST | `true` |
 | Associated post type | `learn` |
+
+The course taxonomy term is where the admin provides **course description feedback** — the term edit screen includes a feedback field that triggers re-running the Course Describer agent (see Section 8.4).
+
+### 4.6 Custom Taxonomy: `lesson_group` (Tag)
+
+| Property | Value |
+|----------|-------|
+| Taxonomy slug | `lesson_group` |
+| Label (singular) | Lesson Group |
+| Label (plural) | Lesson Groups |
+| Hierarchical | `false` (tag-style) |
+| Public | `true` |
+| Show in REST | `true` |
+| Associated post type | `learn` |
+
+Lesson groups organize lessons that were generated from the same lesson plan. A single lesson plan may produce multiple lessons (see Section 5.2 — lesson count setting), and all lessons from the same plan share a `lesson_group` tag.
+
+The lesson group tag is where the admin provides **lesson plan feedback** — the tag edit screen shows the full lesson plan and includes a feedback field that triggers re-running the Lesson Planner and all downstream agents for that group (see Section 8.4).
+
+**Term meta for `lesson_group`:**
+
+| Meta key | Type | Description |
+|----------|------|-------------|
+| `_1111_lesson_plan_raw` | `array` | Full raw lesson plan from the Lesson Planner agent |
+| `_1111_learning_objective` | `string` | The objective this lesson group covers |
+| `_1111_lesson_count` | `int` | Number of lessons generated from this plan |
+| `_1111_plan_feedback` | `string` | Admin's feedback on the lesson plan (cleared after regeneration) |
+| `_1111_plan_version` | `int` | Incremented on each regeneration |
 
 ---
 
@@ -221,29 +281,34 @@ Learning objectives (3 total — produce one lesson entry for each):
 
 ### 5.2 Agent 2: Lesson Planner
 
-**Purpose:** Given one objective, the course narrative, and the full objective list (for scope control), produce a backward-designed lesson plan: mastery criteria → activity seed → lesson outline.
+**Purpose:** Given one objective, the course narrative, the full objective list (for scope control), and a target lesson count, produce a backward-designed lesson plan: mastery criteria → activity seed → lesson outline(s). A single objective may require multiple lessons to cover adequately — the planner decides how to split the content across the target lesson count.
 
 **Model:** Fast model (`claude-haiku-4-5-20251001`)
 **Max tokens:** 2048
 **Prompt file:** `prompts/lesson-planner.md`
 
+**Lesson count:** The admin sets a target number of lessons per objective on the Settings page (default: 1, range: 1–4). The Lesson Planner receives this as input and produces a plan with that many lesson outlines. When the count is greater than 1, the planner splits the objective's content across multiple lessons in a logical progression. All lessons from the same plan are grouped under a shared `lesson_group` tag.
+
 **Input (user message):**
 ```
 Course description: You'll start by learning to see the web through the eyes of users who face accessibility barriers...
 
-Learning objective for THIS lesson: Identify common accessibility barriers on web pages
+Learning objective for THIS lesson group: Identify common accessibility barriers on web pages
 
-This lesson must be titled exactly: Seeing the Barriers
+Lesson title from Course Describer: Seeing the Barriers
+
+Target lesson count: 2
 
 Other objectives in this course (DO NOT teach these, they have their own lessons):
 - Use browser developer tools to run basic accessibility audits
 - Propose concrete fixes for the accessibility issues you find
+
+Admin feedback on previous plan (if any): Split the visual barriers into their own lesson — there's too much for one lesson.
 ```
 
-**Expected output (JSON):**
+**Expected output (JSON) — single lesson (lesson_count=1):**
 ```json
 {
-  "lesson_title": "Seeing the Barriers",
   "learning_objective": "Identify and categorize at least five common web accessibility barriers across visual, motor, cognitive, and auditory categories.",
   "key_concepts": [
     "Visual barriers (contrast, color-only indicators, missing alt text)",
@@ -260,37 +325,71 @@ Other objectives in this course (DO NOT teach these, they have their own lessons
   ],
   "suggested_activity": {
     "activity_type": "short_answer",
-    "prompt": "Visit any popular website and identify at least five accessibility barriers you can find. For each, explain which user group it affects and why.",
+    "prompt": "Visit any popular website and identify at least five accessibility barriers you can find.",
     "expected_evidence": [
       "Lists at least five barriers found on the chosen website",
       "Correctly categorizes each barrier",
       "Explains impact on real users for each barrier"
     ]
   },
-  "lesson_outline": [
-    "Start with a scenario: a user with low vision trying to read a low-contrast form",
-    "Define what accessibility barriers are and who they affect",
-    "Walk through visual barriers with real-world examples",
-    "Cover motor and keyboard barriers with examples",
-    "Cover cognitive and auditory barriers with examples",
-    "Introduce WCAG as the framework that organizes these barriers",
-    "Show how to spot barriers on a real webpage (visual inspection technique)",
-    "Recap: the five categories and why recognizing them matters"
+  "lessons": [
+    {
+      "lesson_title": "Seeing the Barriers",
+      "lesson_outline": [
+        "Start with a scenario: a user with low vision trying to read a low-contrast form",
+        "Define what accessibility barriers are and who they affect",
+        "Walk through visual, motor, cognitive, and auditory barriers with real-world examples",
+        "Introduce WCAG as the framework that organizes these barriers",
+        "Show how to spot barriers on a real webpage (visual inspection technique)",
+        "Recap: the five categories and why recognizing them matters"
+      ]
+    }
+  ]
+}
+```
+
+**Expected output (JSON) — multi-lesson (lesson_count=2):**
+```json
+{
+  "learning_objective": "Identify and categorize at least five common web accessibility barriers...",
+  "key_concepts": ["..."],
+  "mastery_criteria": ["..."],
+  "suggested_activity": { "..." },
+  "lessons": [
+    {
+      "lesson_title": "Seeing the Visual Barriers",
+      "lesson_outline": [
+        "Start with a scenario: a user with low vision trying to read a low-contrast form",
+        "Walk through visual barriers: contrast, color-only indicators, missing alt text",
+        "Cover motor and keyboard barriers: small targets, keyboard traps, hover-only"
+      ]
+    },
+    {
+      "lesson_title": "Beyond What You Can See",
+      "lesson_outline": [
+        "Cover cognitive barriers: complex layouts, auto-playing media, inconsistent navigation",
+        "Cover auditory barriers: missing captions, audio-only content",
+        "Introduce WCAG as the unifying framework across all categories",
+        "Recap: all categories and how they interconnect"
+      ]
+    }
   ]
 }
 ```
 
 **Key prompt rules (from 1111 School's lesson_planner):**
-- **Backward design order:** Step 1: mastery_criteria (what does mastery look like?), Step 2: suggested_activity (what would demonstrate mastery?), Step 3: lesson_outline (what knowledge closes the gap?)
+- **Backward design order:** Step 1: mastery_criteria (what does mastery look like?), Step 2: suggested_activity (what would demonstrate mastery?), Step 3: lesson outlines (what knowledge closes the gap?)
 - **Scope control:** Cover ONLY the assigned objective. May briefly mention related topics for context but must NOT teach concepts belonging to other objectives.
+- **Lesson splitting:** When `lesson_count` > 1, split the objective's content across lessons in a logical progression. Each lesson should build toward mastery, not stand alone. The last lesson in the group should connect all prior lessons to the mastery criteria.
 - Mastery criteria must be specific and measurable — rubric-style checks a reviewer could use.
 - Activity seed must directly exercise the mastery criteria, not just recall facts.
-- Lesson outline must close the gap: after completing it, a learner could plausibly meet every mastery criterion.
-- Preset title from Course Describer must be used exactly.
+- Lesson outlines must collectively close the gap: after completing all lessons, a learner could plausibly meet every mastery criterion.
+- The first lesson title uses the preset title from Course Describer. Additional lessons get planner-generated titles that read as continuations (e.g., "Part 2: Beyond What You Can See").
+- **Feedback integration:** When admin feedback is provided, incorporate it into the new plan. The feedback may request structural changes (split/merge lessons), content emphasis changes, or scope adjustments.
 
 ### 5.3 Agent 3: Lesson Writer
 
-**Purpose:** Given the lesson plan (including mastery criteria, activity seed, and outline), write the full lesson content.
+**Purpose:** Given a specific lesson outline from the lesson plan (including mastery criteria and activity seed for context), write the full lesson content.
 
 **Model:** Default model (`claude-sonnet-4-6` — needs more tokens for long-form content)
 **Max tokens:** 8192
@@ -300,8 +399,18 @@ Other objectives in this course (DO NOT teach these, they have their own lessons
 ```
 Course description: You'll start by learning to see the web through the eyes of users...
 
-Lesson plan:
-{full lesson plan JSON from Agent 2}
+Lesson title: Seeing the Visual Barriers
+
+Lesson outline:
+["Start with a scenario: a user with low vision...", "Walk through visual barriers...", ...]
+
+Mastery criteria (for the full lesson group — this lesson contributes to these):
+["Names at least five distinct accessibility barriers...", ...]
+
+Key concepts:
+["Visual barriers (contrast, color-only indicators, missing alt text)", ...]
+
+Admin feedback on previous version (if any): Add more concrete examples of contrast failures.
 ```
 
 **Expected output (JSON):**
@@ -351,6 +460,8 @@ Mastery criteria:
 
 Activity seed:
 {activity seed JSON from lesson plan}
+
+Admin feedback on previous activity (if any): The rubric criteria are too vague — make them more specific.
 ```
 
 **Expected output (JSON):**
@@ -439,21 +550,25 @@ learned-wp-creator/
 ├── README.md                       Plugin readme (WordPress-style + GitHub)
 ├── CLAUDE.md                       AI coding assistant instructions
 ├── LICENSE                         GPL v2+
-├── uninstall.php                   Clean removal of plugin data
+├── uninstall.php                   Clean removal of plugin data + agent user
 │
 ├── includes/
-│   ├── class-post-type.php         Registers CPT and taxonomy
+│   ├── class-post-type.php         Registers CPT and taxonomies (course + lesson_group)
+│   ├── class-agent-user.php        Creates/manages the 1111 Agent user and custom role
 │   ├── class-api-client.php        Anthropic API HTTP client
 │   ├── class-orchestrator.php      Agent orchestration, pipeline, validation
+│   ├── class-content-lock.php      Block editor content locking, wp_insert_post_data guard
+│   ├── class-feedback.php          Feedback submission handling, regeneration triggers
 │   ├── class-admin-page.php        Dashboard page registration and rendering
-│   ├── class-settings.php          Settings page (API key, model config)
+│   ├── class-settings.php          Settings page (API key, model config, lessons per objective)
 │   └── class-telemetry.php         Event collection, buffering, learn-service transmission
 │
 ├── admin/
 │   ├── css/
-│   │   └── admin.css               Dashboard styles
+│   │   └── admin.css               Dashboard + feedback panel styles
 │   ├── js/
-│   │   └── admin.js                Dashboard interactivity (AJAX, form, progress)
+│   │   ├── admin.js                Dashboard interactivity (AJAX, form, progress)
+│   │   └── editor-sidebar.js       Block editor sidebar panel (feedback for lesson + activity)
 │   └── views/
 │       ├── dashboard.php           Course creation form template
 │       ├── settings.php            Settings page template
@@ -480,8 +595,9 @@ learned-wp-creator/
 - **Submenu items:**
   - **Dashboard** — Course creation form
   - **All Lessons** — Standard CPT list view (WordPress default)
-  - **Courses** — Taxonomy management (WordPress default)
-  - **Settings** — API key and model configuration
+  - **Courses** — Course taxonomy management (course-level feedback on term edit screen)
+  - **Lesson Groups** — Lesson group tag management (plan-level feedback on tag edit screen)
+  - **Settings** — API key, model configuration, lessons per objective
 
 ### 8.2 Dashboard Page — Course Creation Form
 
@@ -505,8 +621,9 @@ learned-wp-creator/
    - Per objective: "Planning lesson 1..." → "Writing lesson 1..." → "Creating activity 1..." (checkmarks on completion)
    - Overall: "Generation complete — N lessons created"
 5. On completion, a success message with links to:
-   - Edit individual lessons in the block editor
+   - Review individual lessons in the block editor (read-only with feedback panel)
    - View the course archive page
+   - Edit the course taxonomy term (to provide course-level feedback)
    - Return to dashboard to create another course
 6. On error per objective: displayed inline in the stepper without blocking other objectives
 7. On fatal error: error message with **Retry** button that resumes from the last successful step
@@ -520,9 +637,101 @@ learned-wp-creator/
 | Default Model | Select | Default: `claude-sonnet-4-6`. Used by Lesson Writer (needs more tokens). |
 | Max Tokens (Plan) | Number | Default: 2048. Range: 512–4096. |
 | Max Tokens (Content) | Number | Default: 8192. Range: 1024–16384. |
+| Lessons per Objective | Number | Default: 1. Range: 1–4. How many lessons the Lesson Planner generates per objective. |
 | Share Data with 1111 | Checkbox | Default: OFF. Consent dialog on first enable. See Section 15. |
 
 Settings are saved using the WordPress Settings API with nonce verification and capability checks.
+
+### 8.4 Feedback-Driven Regeneration
+
+Generated content is **immutable by human users** — only the 1111 Agent user (Persona 3.4) can modify post content. Human administrators provide feedback through dedicated UI surfaces, and that feedback is passed to the relevant agent(s) to regenerate content. This keeps the agent pipeline as the single source of truth for all generated content.
+
+#### 8.4.1 Feedback Levels
+
+Feedback can be provided at four levels, each triggering regeneration of different scope:
+
+| Level | Where feedback is given | What gets regenerated | Agents re-run |
+|-------|------------------------|----------------------|----------------|
+| **Course description** | Course taxonomy term edit screen | Entire course — new narrative, new lesson plans, new lessons, new activities | All four agents |
+| **Lesson plan** | Lesson group (`lesson_group`) tag edit screen | All lessons in that group + their activities | Lesson Planner → Lesson Writer → Activity Creator |
+| **Written lesson** | Post editor — block editor sidebar panel | That lesson only (re-written from existing plan) | Lesson Writer only |
+| **Activity** | Post editor — custom meta box below content | That lesson's activity only (re-created from existing plan) | Activity Creator only |
+
+#### 8.4.2 Feedback UI: Course Description (Taxonomy Term Editor)
+
+When the admin edits a `course` taxonomy term, the standard WordPress term edit screen includes:
+
+- **Read-only display** of the current AI-generated `narrative_description` (rendered from meta, not the editable description field)
+- **Read-only list** of current lesson titles and summaries
+- **Feedback textarea:** "What should change about this course's narrative or structure?"
+- **Regenerate Course button:** Submits feedback, re-runs the Course Describer with the original inputs plus feedback, and cascades regeneration through all downstream agents
+- All fields use the block editor's `TextareaControl` component for consistency with WordPress admin UI
+
+The original admin inputs (title, description, objectives) are preserved in term meta and always re-sent to the agent. Feedback is additive context, not a replacement for the original inputs.
+
+#### 8.4.3 Feedback UI: Lesson Plan (Tag Editor)
+
+When the admin edits a `lesson_group` tag, the term edit screen includes:
+
+- **Read-only display** of the full lesson plan JSON rendered as readable HTML (mastery criteria, key concepts, activity seed, lesson outlines)
+- **List of lessons** in this group with links to each post
+- **Feedback textarea:** "What should change about this lesson plan?"
+- **Regenerate Plan button:** Submits feedback, re-runs the Lesson Planner with original inputs plus feedback, then cascades through Lesson Writer and Activity Creator for all lessons in the group
+
+The lesson count for this group may differ from the default if the admin has previously requested splitting or merging lessons via feedback.
+
+#### 8.4.4 Feedback UI: Written Lesson (Post Editor — Sidebar Panel)
+
+When viewing a `learn` post in the block editor, a **sidebar panel** (registered via `registerPlugin` / `PluginSidebar` from `@wordpress/edit-post`) provides:
+
+- **Read-only view** of the post content (the block editor canvas itself shows the content but editing is disabled — see Section 8.5)
+- **Feedback textarea:** "What should change about this lesson?"
+- **Regenerate Lesson button:** Submits feedback, re-runs the Lesson Writer with the existing lesson plan plus feedback, and updates the post content
+- **Version indicator:** Shows current generation version number (incremented on each regeneration)
+
+#### 8.4.5 Feedback UI: Activity (Post Editor — Meta Box)
+
+Below the block editor content area, a **custom meta box** displays:
+
+- **Read-only rendered view** of the current activity (prompt, instructions, rubric, hints)
+- **Feedback textarea:** "What should change about this activity?"
+- **Regenerate Activity button:** Submits feedback, re-runs the Activity Creator with the existing mastery criteria and activity seed plus feedback, and updates the activity meta
+- **Version indicator:** Shows current activity generation version number
+
+#### 8.4.6 Regeneration Pipeline
+
+When feedback is submitted at any level:
+
+1. The feedback text is stored in the relevant meta field (term meta or post meta)
+2. The appropriate agent(s) are called with the original inputs plus the feedback appended to the user message
+3. Output is validated using the same schema validation and retry logic as initial generation
+4. On success, the generated content is updated (post content, post meta, or term meta) — authored by the 1111 Agent user
+5. WordPress revisions capture the before/after diff
+6. The feedback field is cleared after successful regeneration
+7. A `content_regenerated` telemetry event is emitted (see Section 15.3) with the feedback level and which agents were re-run
+
+#### 8.4.7 Cascading Regeneration
+
+When feedback triggers regeneration at a higher level, all downstream content is regenerated:
+
+- **Course description feedback** → Course Describer → (for each objective) Lesson Planner → (for each lesson) Lesson Writer → Activity Creator
+- **Lesson plan feedback** → Lesson Planner → (for each lesson in group) Lesson Writer → Activity Creator
+- **Lesson feedback** → Lesson Writer (single lesson)
+- **Activity feedback** → Activity Creator (single activity)
+
+The progress stepper UI (Section 8.2) is reused for cascading regeneration, showing which agents are currently running and which lessons are being updated.
+
+### 8.5 Block Editor Content Locking
+
+For `learn` posts authored by the 1111 Agent user, the block editor content area is **read-only** for human administrators. This is implemented using WordPress's block locking API:
+
+- All blocks in agent-authored posts are locked with `{ "lock": { "move": true, "remove": true } }` — blocks cannot be moved, removed, or edited
+- The block editor toolbar is hidden for locked content via the `editor.BlockEdit` filter
+- The post title is also locked (non-editable) via the `enter_title_here` filter returning the current title, combined with a read-only attribute on the title input
+- A prominent notice at the top of the editor explains: "This lesson was generated by 1111 Learn. Use the feedback panel in the sidebar to request changes."
+- The `post_content` is additionally protected server-side: the `wp_insert_post_data` filter rejects content changes from any user other than the 1111 Agent user
+
+**Why block editing, not classic editor?** The plugin targets the latest WordPress version and the block editor is the standard editing experience. Block locking is a native Gutenberg API that provides the exact UX needed: content is visible and structured but not directly editable.
 
 ---
 
@@ -538,6 +747,8 @@ Settings are saved using the WordPress Settings API with nonce verification and 
 | `_1111_lesson_titles` | `array` | Pre-set `[{lesson_title, lesson_summary}]` from Course Describer |
 | `_1111_generation_date` | `string` | ISO 8601 timestamp of generation |
 | `_1111_generation_status` | `string` | `generating`, `complete`, `failed` |
+| `_1111_course_feedback` | `string` | Admin's feedback on the course description (cleared after regeneration) |
+| `_1111_course_version` | `int` | Incremented on each course-level regeneration |
 
 ### 9.2 Post Meta (Lesson)
 
@@ -550,8 +761,11 @@ Settings are saved using the WordPress Settings API with nonce verification and 
 | `_1111_mastery_criteria` | `array` | Mastery criteria from lesson plan |
 | `_1111_key_takeaways` | `array` | Key takeaways from lesson writer |
 | `_1111_activity` | `array` | Activity spec: `{activity_type, prompt, instructions, scoring_rubric, hints}` |
-| `_1111_lesson_plan_raw` | `array` | Full raw lesson plan (for debugging/re-generation) |
 | `_1111_generated` | `bool` | `true` if AI-generated |
+| `_1111_lesson_feedback` | `string` | Admin's feedback on the written lesson (cleared after regeneration) |
+| `_1111_lesson_version` | `int` | Incremented on each lesson-level regeneration |
+| `_1111_activity_feedback` | `string` | Admin's feedback on the activity (cleared after regeneration) |
+| `_1111_activity_version` | `int` | Incremented on each activity-level regeneration |
 
 ### 9.3 Options (wp_options)
 
@@ -562,6 +776,8 @@ Settings are saved using the WordPress Settings API with nonce verification and 
 | `1111_learn_default_model` | Model ID for Lesson Writer |
 | `1111_learn_plan_max_tokens` | Max tokens for planning agents |
 | `1111_learn_content_max_tokens` | Max tokens for content generation |
+| `1111_learn_lessons_per_objective` | Target lesson count per objective (default: 1, range: 1–4) |
+| `1111_learn_agent_user_id` | User ID of the 1111 Agent user (set on activation) |
 | `1111_learn_telemetry_enabled` | Boolean — telemetry opt-in status |
 | `1111_learn_telemetry_consent_at` | ISO 8601 timestamp of consent |
 | `1111_learn_service_credential` | Encrypted anonymous credential from learn-service |
@@ -635,29 +851,32 @@ Request → Validate → Create Course Term → Phase 0 → Per-Objective Loop �
 
 For each objective (index 0 to N-1):
 
-1. **Check for existing content** — if lesson already has content (retry scenario), skip
-2. **Lesson Planner** — call with objective, narrative description, all objectives (for scope control), and preset title from Phase 0
+1. **Check for existing content** — if lesson group already has content (retry scenario), skip
+2. **Lesson Planner** — call with objective, narrative description, all objectives (for scope control), preset title from Phase 0, target lesson count, and any admin feedback
 3. Validate plan output. Retry once on failure.
-4. **Lesson Writer** — call with the full lesson plan and course description
-5. Validate content output. Retry once on failure.
-6. **Activity Creator** — call with activity seed, objective, and mastery criteria from the plan
-7. Validate activity output. Retry once on failure.
-8. **Create WordPress post** — `learn` CPT, assigned to course taxonomy, with all meta
-9. **Commit and report progress** — save post, update stepper
+4. **Create `lesson_group` tag** — store the full lesson plan on the tag's term meta
+5. **For each lesson in the plan** (1 to lesson_count):
+   a. **Lesson Writer** — call with the specific lesson outline, mastery criteria, and course description
+   b. Validate content output. Retry once on failure.
+   c. **Activity Creator** — call with activity seed, objective, and mastery criteria from the plan
+   d. Validate activity output. Retry once on failure.
+   e. **Create WordPress post** — `learn` CPT, authored by 1111 Agent user, assigned to `course` taxonomy term and `lesson_group` tag, with all meta
+   f. **Commit and report progress** — save post, update stepper
 
 ### 11.4 Post Creation
 
 | Post field | Value |
 |------------|-------|
 | `post_type` | `learn` |
+| `post_author` | 1111 Agent user ID (Persona 3.4) |
 | `post_title` | `lesson_title` from Lesson Writer |
 | `post_content` | `lesson_body` converted from Markdown to WordPress block markup |
 | `post_excerpt` | First sentence of `lesson_body`, or `lesson_summary` from Course Describer |
 | `post_status` | `draft` (admin reviews before publishing) |
 | `menu_order` | Objective index (for ordering) |
-| `tax_input` | Assigned to the course taxonomy term |
+| `tax_input` | Assigned to the `course` taxonomy term and `lesson_group` tag |
 
-Posts are created as **drafts** so the admin can review, edit, and publish at their discretion.
+Posts are created as **drafts** authored by the 1111 Agent user (Persona 3.4). The admin reviews generated content and provides feedback to trigger regeneration — they do not directly edit post content.
 
 ### 11.5 Markdown to Block Conversion
 
@@ -780,13 +999,14 @@ Generated content consumed by learners (Persona 3.2) must also meet WCAG 2.1 AA.
 
 ## 14. Security Requirements
 
-1. **Capability checks:** All admin pages and AJAX handlers require `manage_options` capability.
-2. **Nonce verification:** All form submissions and AJAX requests nonce-protected.
-3. **Input sanitization:** `sanitize_text_field()`, `sanitize_textarea_field()`, `wp_kses_post()` as appropriate.
+1. **Capability checks:** All admin pages and AJAX handlers require `manage_options` capability. Content modification is restricted to the 1111 Agent user via the `wp_insert_post_data` filter.
+2. **Nonce verification:** All form submissions and AJAX requests nonce-protected, including feedback submission.
+3. **Input sanitization:** `sanitize_text_field()`, `sanitize_textarea_field()`, `wp_kses_post()` as appropriate. Feedback text is sanitized with `sanitize_textarea_field()` before being passed to agents.
 4. **Output escaping:** `esc_html()`, `esc_attr()`, `esc_url()`, `wp_kses_post()` as appropriate.
 5. **API key storage:** Encrypted at rest, never in client-side code or debug logs.
 6. **No direct file access:** All PHP files check `defined('ABSPATH')`.
 7. **Content sanitization:** Generated content run through `wp_kses_post()` before saving.
+8. **Agent user isolation:** The `1111_learn_agent` role has only the minimum capabilities needed to create and edit `learn` posts. It cannot access other post types, admin pages, or settings.
 
 ---
 
@@ -824,7 +1044,8 @@ All events are recorded server-side during course generation and batched for tra
 | `retry_outcome` | After automatic retry | agentName, succeeded (bool), originalErrors, retryErrors |
 | `course_completed` | All lessons generated successfully | objectiveCount, totalLatencyMs, totalTokens, lessonCount |
 | `course_failed` | Pipeline fails fatally | failedAgent, failedObjectiveIndex, errorType, errorMessage |
-| `content_edited` | Admin edits a generated lesson before publishing | postId, fieldsChanged (list of field names only — not content) |
+| `feedback_submitted` | Admin submits feedback for regeneration | feedbackLevel (course/plan/lesson/activity), agentsToRerun (list) |
+| `content_regenerated` | Regeneration completes from feedback | feedbackLevel, agentsRerun, succeeded (bool), lessonCount |
 
 ### 15.4 What Is Never Collected
 
@@ -921,15 +1142,17 @@ Usage data (all installations)
 
 > **Design principle:** The plugin is built to be improved by agents. Telemetry data, prompt files as editable Markdown, and structured validation errors are all designed so that an AI agent has everything it needs to diagnose a problem and propose a fix. The developer's role is reviewing and merging PRs — not interpreting logs, manually editing prompts, or initiating the improvement cycle.
 
-### 15.9 Content Edit Tracking
+### 15.9 Feedback Tracking
 
-When an admin edits a generated lesson in the block editor before publishing, the plugin records which fields were modified (title, body, excerpt) — but never the content itself. This signal is valuable for prompt improvement:
+Since admins cannot directly edit generated content, the telemetry signal shifts from "what did the admin change?" to "what feedback did the admin give, and at what level?" This is a stronger signal for prompt improvement because it captures *intent*, not just *diff*:
 
-- If 80% of admins edit the lesson title, the Course Describer prompt needs better title generation instructions.
-- If admins consistently shorten lesson bodies, the Lesson Writer is over-generating.
-- If activity instructions are frequently rewritten, the Activity Creator prompt needs refinement.
+- If 80% of feedback targets lesson plans, the Lesson Planner prompt needs improvement.
+- If most feedback at the lesson level requests "more examples," the Lesson Writer prompt should emphasize worked examples.
+- If activity feedback frequently says "too vague," the Activity Creator prompt needs tighter rubric generation instructions.
+- If course-level feedback is rare, the Course Describer is performing well.
+- If admins frequently regenerate the same lesson multiple times, the agent is not incorporating feedback effectively.
 
-This is tracked via a `save_post_learn` hook that compares the current post content against the original generated content stored in post meta.
+Tracked via `feedback_submitted` and `content_regenerated` telemetry events. Feedback text itself is **never** collected — only the level (course/plan/lesson/activity), the number of regeneration cycles, and which agents were re-run.
 
 ### 15.10 Options (wp_options)
 
@@ -963,7 +1186,7 @@ These are intentionally excluded from 1111 Learn Creator:
 2. **Learner profiles** — No tracking of individual learner progress, preferences, or personalization.
 3. **Progress tracking** — No completion tracking or status indicators for learners.
 4. **Frontend interactivity** — No JS-driven learner interactions. The plugin produces standard WordPress posts.
-5. **User roles / enrollment** — No custom roles, enrollment, or access restrictions.
+5. **Enrollment / access restrictions** — No learner enrollment or content gating. (The plugin does create one custom role — `1111_learn_agent` — for the system agent user, but this is not a user-facing role.)
 6. **Certificates or badges** — No completion rewards.
 7. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
 8. **Multi-site support** — Single-site only for v1.
@@ -989,12 +1212,13 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 ## 18. Development Guidelines
 
-1. **No build step.** Vanilla PHP, JS, CSS. No Webpack, Sass, or npm.
+1. **No build step.** Vanilla PHP, JS, CSS. No Webpack, Sass, or npm. Exception: the block editor sidebar panel (`editor-sidebar.js`) uses `wp.plugins.registerPlugin` and `wp.editPost.PluginSidebar` from the bundled `@wordpress/edit-post` and `@wordpress/plugins` packages — no npm install required, these ship with WordPress.
 2. **WordPress coding standards.** Follow WordPress PHP and JavaScript coding standards.
-3. **Minimum requirements:** WordPress 6.0+, PHP 8.0+.
-4. **Prefix everything.** `_1111_learn_` for meta/options, `Learn_Creator_` for classes.
-5. **No Composer.** API client uses `wp_remote_post()`.
-6. **Hooks and filters** for extensibility:
+3. **Minimum requirements:** WordPress 6.7+, PHP 8.0+. The plugin targets the **latest WordPress version** and relies on block editor APIs (block locking, PluginSidebar, SlotFill) that are stable in 6.7+. Do not add fallbacks for the classic editor — the block editor is required.
+4. **Block editor first.** All post-editor UI (feedback panels, content locking, activity meta box) is built for the block editor using the `@wordpress/` JS packages bundled with WordPress. Taxonomy term editors use standard WordPress admin UI enhanced with custom meta boxes.
+5. **Prefix everything.** `_1111_learn_` for meta/options, `Learn_Creator_` for classes.
+6. **No Composer.** API client uses `wp_remote_post()`.
+7. **Hooks and filters** for extensibility:
    - `1111_learn_before_describe` — filter course data before Course Describer
    - `1111_learn_course_described` — action after narrative + titles set
    - `1111_learn_before_plan` — filter objective context before Lesson Planner
@@ -1006,7 +1230,11 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
    - `1111_learn_lesson_created` — action after WordPress post created
    - `1111_learn_course_complete` — action after all lessons created
    - `1111_learn_validate_{agent}` — filters for custom validation per agent
-7. **Prompts are data, not code.** `prompts/*.md` loaded at runtime. Editable without touching PHP.
+   - `1111_learn_feedback_submitted` — action when admin submits feedback at any level
+   - `1111_learn_before_regenerate` — filter feedback + inputs before regeneration pipeline
+   - `1111_learn_content_regenerated` — action after regeneration completes
+8. **Prompts are data, not code.** `prompts/*.md` loaded at runtime. Editable without touching PHP.
+9. **Agent user owns all content.** All generated posts are authored by the 1111 Agent user. Human administrators interact with content through feedback, not direct editing.
 
 ---
 
@@ -1016,7 +1244,10 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 - [ ] Plugin bootstrap file with proper headers and ABSPATH checks
 - [ ] Register `learn` custom post type with REST support
 - [ ] Register `course` taxonomy
-- [ ] Settings page with encrypted API key storage and model selectors
+- [ ] Register `lesson_group` tag taxonomy
+- [ ] Create 1111 Agent user and `1111_learn_agent` role on activation
+- [ ] Clean up agent user and role on uninstall
+- [ ] Settings page with encrypted API key storage, model selectors, and lessons-per-objective
 - [ ] `CLAUDE.md` for the new repo
 - [ ] `README.md` with install instructions
 
@@ -1044,22 +1275,44 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 ### Phase 4: Content Generation Pipeline
 - [ ] Wire dashboard form → orchestrator → agents
 - [ ] Phase 0: Course Describer → create taxonomy term with narrative + titles
-- [ ] Per-objective loop: Planner → Writer → Activity Creator → create draft post
+- [ ] Per-objective loop: Planner → Writer → Activity Creator → create draft posts
+- [ ] Create `lesson_group` tag per objective, assign all lessons from same plan
+- [ ] Set post author to 1111 Agent user on all generated posts
 - [ ] Markdown-to-block conversion for `post_content`
 - [ ] Store all structured meta (mastery criteria, activity, takeaways)
+- [ ] Store lesson plan on `lesson_group` term meta (not post meta)
+- [ ] Support multi-lesson plans (lessons_per_objective > 1)
 - [ ] Incremental recovery: skip already-generated objectives on retry
 - [ ] Progress transients and polling responses
 
-### Phase 5: Telemetry
+### Phase 5: Block Editor Integration
+- [ ] Content locking: lock all blocks in agent-authored posts (move + remove)
+- [ ] Server-side guard: `wp_insert_post_data` filter rejects content changes from non-agent users
+- [ ] Block editor notice: "This lesson was generated by 1111 Learn. Use the feedback panel..."
+- [ ] Sidebar panel via `registerPlugin` / `PluginSidebar`: lesson feedback textarea + regenerate button
+- [ ] Activity meta box below content: activity display + feedback textarea + regenerate button
+- [ ] Version indicators for lesson and activity regeneration counts
+
+### Phase 6: Feedback and Regeneration
+- [ ] Course taxonomy term edit screen: narrative display + feedback textarea + regenerate button
+- [ ] Lesson group tag edit screen: plan display + feedback textarea + regenerate button
+- [ ] AJAX handlers for feedback submission at all four levels
+- [ ] Regeneration pipeline: re-run appropriate agents with original inputs + feedback
+- [ ] Cascading regeneration: course feedback re-runs all agents, plan feedback re-runs planner + downstream
+- [ ] Reuse progress stepper UI for regeneration progress
+- [ ] WordPress revisions capture before/after diffs on regeneration
+- [ ] Clear feedback field after successful regeneration
+
+### Phase 7: Telemetry
 - [ ] Telemetry class: event collection, buffering, batch flush
 - [ ] learn-service anonymous registration (`/v1/auth/register`)
 - [ ] Event transmission (`/v1/events`) with fire-and-forget error handling
 - [ ] Opt-in toggle on Settings page with consent dialog
 - [ ] Data stripping: ensure API keys, content, and PII are never included
-- [ ] Content edit tracking via `save_post_learn` hook (field names only, not content)
+- [ ] Feedback tracking: `feedback_submitted` and `content_regenerated` events (level + agents, never feedback text)
 - [ ] Wire telemetry events into orchestrator pipeline (agent_request, agent_response, validation_failure, etc.)
 
-### Phase 6: Polish and Quality
+### Phase 8: Polish and Quality
 - [ ] Accessibility audit: focus management, ARIA, keyboard, contrast
 - [ ] Security audit: nonces, capabilities, sanitization, escaping
 - [ ] Uninstall cleanup (`uninstall.php` — remove options, term meta, post meta)
@@ -1071,14 +1324,16 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 ## 20. Success Criteria
 
-1. An administrator can generate a complete course (3–8 lessons, one per objective) from title + description + objectives in under 3 minutes.
+1. An administrator can generate a complete course (1–4 lessons per objective, 1–8 objectives) from title + description + objectives in under 3 minutes.
 2. Generated lessons follow a visible narrative arc — they read as chapters in the same course, not disconnected topics.
 3. Each lesson's content clearly prepares the learner for the associated activity. Backward design is evident.
 4. Activities have specific, checkable rubric criteria — not vague "practice what you learned."
-5. All generated content is saved as standard WordPress draft posts — viewable in any theme, editable in the block editor.
+5. All generated content is saved as standard WordPress draft posts authored by the 1111 Agent user — viewable in any theme, reviewable in the block editor, improvable through feedback-driven regeneration.
 6. The plugin installs with zero configuration beyond entering an API key.
 7. All admin UI passes WCAG 2.1 AA.
 8. Agent prompts live in Markdown files; merged PRs take effect immediately on the next generation without a plugin update.
 9. A failed generation can be retried without losing already-generated lessons.
-10. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
+10. Administrators cannot directly edit generated post content — they provide feedback that triggers regeneration, and the output visibly improves with each feedback cycle.
+11. The block editor shows generated content as read-only with a clear feedback panel in the sidebar and activity feedback in a meta box below content.
+12. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
 11. Prompt quality measurably improves over time: validation failure rates decrease, retry rates decrease, and the percentage of generated fields that admins edit before publishing decreases.
