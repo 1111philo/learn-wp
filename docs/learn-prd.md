@@ -13,7 +13,7 @@
 
 **Learn** is a WordPress plugin by 11:11 Philosopher's Group that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A seven-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
 
-Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner builds **within WordPress itself**. The learner isn't just "completing exercises" — they're creating real WordPress content (pages, posts, even entire sites) that proves what they can do. The plugin runs on a **WordPress Multisite** network: the administrator creates courses on the main site, and each learner gets their own subsite where they build their portfolio work product. An Activity Assessment Agent evaluates the learner's WordPress content against the generated rubrics and mastery criteria.
+Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner builds **within WordPress itself**. The learner isn't just "completing exercises" — they're creating real WordPress content (pages, posts, even entire sites) that proves what they can do. The plugin runs on a **WordPress Multisite** network: administrators create courses on any site in the network, and each learner gets their own subsite where they build their portfolio work product. Learners can also use Learn on their own subsites to create courses for others — the plugin is permission-aware and tailors generated content to what the creating user can actually do. An Activity Assessment Agent evaluates the learner's WordPress content against the generated rubrics and mastery criteria.
 
 ### 1.1 Lineage
 
@@ -118,35 +118,39 @@ Admin Input (title, description, objectives)
 │  ◄── Lesson plan feedback triggers re-run        │
 └─────────────────────┬───────────────────────────┘
                       │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│  Agent 3: Lesson Writer (per lesson)             │
-│  (default model — needs more tokens)             │
-│  Writes full lesson content from the plan         │
-│  Output: lesson_body, key_takeaways               │
-│  ◄── Lesson feedback triggers re-run             │
-└─────────────────────┬───────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│  Agent 4: Activity Creator (per lesson)          │
-│  (fast model)                                    │
-│  Designs activity as portfolio contribution       │
-│  Gamification: type progression, XP, milestones  │
-│  Output: prompt, instructions, rubric, hints,     │
-│          xp_value, portfolio_contribution          │
-│  ◄── Activity feedback triggers re-run           │
-└─────────────────────┬───────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│  Agent 5: Activity Reviewer (per lesson)         │
-│  (fast model)                                    │
-│  Reviews activity against mastery criteria        │
-│  Checks rubric alignment, difficulty calibration  │
-│  Output: approved/revision_needed, suggestions    │
-│  ◄── Loops back to Activity Creator if needed    │
-└─────────────────────┬───────────────────────────┘
+                      │  For EACH lesson in the plan:
+                      │  ┌──────────────────────────────────────────┐
+                      ▼  ▼                                          │
+┌─────────────────────────────────────────────────┐ │
+│  Agent 3: Lesson Writer                          │ │
+│  (default model — needs more tokens)             │ │
+│  Writes full lesson content from ONE outline      │ │
+│  Output: lesson_body, key_takeaways               │ │
+│  ◄── Lesson feedback triggers re-run             │ │
+└─────────────────────┬───────────────────────────┘ │
+                      │                              │
+                      ▼                              │
+┌─────────────────────────────────────────────────┐ │
+│  Agent 4: Activity Creator                       │ │
+│  (fast model)                                    │ │
+│  Designs activity as portfolio contribution       │ │
+│  Gamification: type progression, XP, milestones  │ │
+│  Output: prompt, instructions, rubric, hints,     │ │
+│          xp_value, portfolio_contribution          │ │
+│  ◄── Activity feedback triggers re-run           │ │
+└─────────────────────┬───────────────────────────┘ │
+                      │                              │
+                      ▼                              │
+┌─────────────────────────────────────────────────┐ │
+│  Agent 5: Activity Reviewer                      │ │
+│  (fast model)                                    │ │
+│  Reviews activity against mastery criteria        │ │
+│  Checks rubric alignment, difficulty calibration  │ │
+│  Output: approved/revision_needed, suggestions    │ │
+│  ◄── Loops back to Activity Creator if needed    │ │
+└─────────────────────┬───────────────────────────┘ │
+                      │                              │
+                      └──── next lesson ─────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────┐
@@ -313,34 +317,75 @@ Multisite Network
 └── ...
 ```
 
-#### 4.7.3 Subsite Provisioning
+#### 4.7.3 Enrollment and Subsite Provisioning
 
-When a learner is enrolled in a course (via the companion administrator plugin or manual assignment), a subsite is created for them if one doesn't already exist:
+The Learn plugin handles learner enrollment directly — there is no separate companion plugin required. An administrator enrolls a learner in a course from the Learn admin UI. When a learner is enrolled, a subsite is created for them if one doesn't already exist:
 
+- **Enrollment:** Admin selects a WordPress user and assigns them to a course. The plugin creates the enrollment record and provisions the subsite in one step.
 - **Subdomain pattern:** `{username}.{network-domain}` (or subdirectory: `{network-domain}/{username}/`)
 - **Default theme:** Inherited from the network's default, or a specific portfolio theme if configured
-- **Capabilities:** The learner has the `editor` role on their own subsite — they can create, edit, and publish pages and posts
+- **Capabilities:** The learner has the `administrator` role on their own subsite — they can create and manage all content on their site, install themes, and use the Learn plugin to create their own courses. However, only **Super Admins** can create courses with activities that require provisioning new subsites (i.e., `work_product_type: site` where the learner doesn't already have a subsite).
 - **Cross-site access:** The Activity Assessment Agent (running on the main site) reads learner content from subsites using `switch_to_blog()` / `restore_current_blog()` — standard WordPress Multisite API
 
-#### 4.7.4 Work Product as WordPress Content
+#### 4.7.4 Work Product, Activities, and Lesson Artifacts
 
-Instead of external tools (Google Docs, Notion, etc.), the work product is WordPress content on the learner's subsite:
+Instead of external tools (Google Docs, Notion, etc.), the work product is WordPress content on the learner's subsite. Every activity is attached to a specific lesson, and the WordPress artifacts the learner creates when completing that activity are **related to the lesson where the activity takes place**. This means a learner's portfolio grows lesson by lesson — each activity adds to the work product, and the artifact created is traceable back to the lesson that taught the underlying skill.
 
-| Activity instruction | WordPress equivalent |
-|---------------------|---------------------|
-| "Create a new document called 'Accessibility Audit Report'" | Create a new page titled "Accessibility Audit Report" |
-| "Add a section about visual barriers" | Edit the page, add a new heading and content |
-| "Include screenshots of issues you found" | Upload images to the media library, insert into the page |
-| "Finalize and present your report" | Publish the page — it's now a shareable portfolio piece |
+**How it works:**
 
-The Course Describer's `work_product_tool` field is replaced by `work_product_type` — one of: `page` (a single WordPress page built across the course), `post_series` (a series of blog posts), or `site` (the entire subsite is the portfolio). Most courses will use `page`.
+1. Each lesson post has an activity stored in its post meta (`_1111_activity`).
+2. The activity instructions direct the learner to create or modify specific WordPress content on their subsite (a page, a post, or a section of their site).
+3. When the learner submits their work for assessment, the submission records the `lesson_post_id` — linking the artifact back to the lesson.
+4. The Activity Assessment Agent evaluates the learner's content against that lesson's specific rubric and mastery criteria.
+5. Over the course, each lesson's activity builds on the previous ones, so the work product accumulates as a coherent whole.
+
+**Example — `page` work product:**
+
+| Lesson | Activity type | What the learner does on their subsite | Artifact relationship |
+|--------|--------------|---------------------------------------|----------------------|
+| "Seeing the Barriers" | `explore` | Creates a new page titled "Accessibility Audit Report" and documents initial barrier research | Page created; linked to Lesson 1 |
+| "Auditing with Browser Tools" | `apply` | Edits the same page — adds an "Audit Methodology" section with screenshots from browser dev tools | Page updated; submission linked to Lesson 2 |
+| "Writing Fix Recommendations" | `create` | Edits the same page — adds a "Recommendations" section with prioritized fixes | Page updated; submission linked to Lesson 3 |
+| Final Assessment | `final` | Reviews and polishes the full page, publishes it as a shareable portfolio piece | Page published; submission linked to assessment |
+
+**Example — `site` work product (entire subsite is the portfolio):**
+
+| Lesson | Activity type | What the learner does on their subsite | Artifact relationship |
+|--------|--------------|---------------------------------------|----------------------|
+| "Planning Your Portfolio Site" | `explore` | Configures their subsite theme, creates an "About" page and a "Projects" page with placeholder structure | Site scaffolded; linked to Lesson 1 |
+| "Building Your First Case Study" | `apply` | Creates a new post documenting a real project — includes context, process, outcome, and images | New post created; linked to Lesson 2 |
+| "Designing for Your Audience" | `create` | Customizes site navigation, adds a custom header, refines the "About" page for a target audience | Site-wide changes; linked to Lesson 3 |
+| "Adding Depth with a Second Case Study" | `create` | Creates a second case study post using a different format or angle than the first | New post created; linked to Lesson 4 |
+| Final Assessment | `final` | Reviews the entire site for consistency, publishes all drafts, ensures navigation works | Full site published; submission linked to assessment |
+
+In the `site` work product type, the learner's entire subsite IS the deliverable — the URL they share is their root domain, not a single page.
+
+The Course Describer's `work_product_type` determines the pattern: `page` (a single WordPress page built across the course), `post_series` (a series of blog posts), or `site` (the entire subsite is the portfolio).
 
 #### 4.7.5 Plugin Activation on Multisite
 
 - The plugin is **network activated** — it runs across the entire Multisite network
-- Admin UI (course creation, settings, feedback) is only accessible on the **main site**
 - The Activity Assessment Agent can read content from any subsite in the network
-- Learner subsites do not show the Learn admin menu — they only see their own content creation tools
+- **Learner subsites DO have the Learn admin UI.** A learner who is an administrator on their own subsite can create courses, generate lessons, and use the full Learn plugin on their site. This means a learner could take a course on the main site AND create their own courses for others on their subsite.
+- **Permission boundary:** Only **Super Admins** can create courses with activities that would require provisioning new subsites for learners (because `wpmu_create_blog()` requires `manage_sites` capability). A subsite admin creating a course can only assign activities that learners complete on their own existing sites — they cannot create activities that require new site creation.
+
+#### 4.7.6 Permission-Aware Content Generation
+
+The Lesson Planner and Activity Creator agents receive the **creating user's capabilities** as part of their input context. This allows the agents to tailor activity instructions to what's actually possible given the creator's permissions:
+
+| Creator role | Can create courses? | Can assign `work_product_type: page`? | Can assign `work_product_type: site`? |
+|-------------|--------------------|------------------------------------|-------------------------------------|
+| Super Admin | Yes | Yes | Yes — can provision new subsites |
+| Subsite Admin | Yes (on their own site) | Yes — learners work on their own existing subsites | No — cannot provision new subsites for learners |
+
+The agents receive a `creator_capabilities` field in their input:
+```
+Creator capabilities:
+- can_create_sites: false
+- site_context: subsite (learner-jane.example.com)
+```
+
+When `can_create_sites` is false, the Activity Creator must not generate instructions that assume the learner has a fresh/empty site. The Lesson Planner must not select `work_product_type: site` unless the creator has site creation capability. Activities should reference content the learner creates within their existing WordPress site.
 
 ### 4.8 Branding and Visual Identity
 
@@ -457,6 +502,10 @@ Other objectives in this course (DO NOT teach these, they have their own lessons
 - Use browser developer tools to run basic accessibility audits
 - Propose concrete fixes for the accessibility issues you find
 
+Creator capabilities:
+- can_create_sites: true
+- site_context: main site
+
 Admin feedback on previous plan (if any): Split the visual barriers into their own lesson — there's too much for one lesson.
 ```
 
@@ -514,6 +563,7 @@ When `lesson_count` > 1, the output structure is identical but the `lessons` arr
 - Lesson outlines must collectively close the gap: after completing all lessons, a learner could plausibly meet every mastery criterion.
 - The first lesson title uses the preset title from Course Describer. Additional lessons get planner-generated titles that read as continuations (e.g., "Part 2: Beyond What You Can See").
 - **Feedback integration:** When admin feedback is provided, incorporate it into the new plan. The feedback may request structural changes (split/merge lessons), content emphasis changes, or scope adjustments.
+- **Permission-aware planning:** When `can_create_sites` is false, do not select `work_product_type: site` and do not plan activities that assume a fresh/empty WordPress site. All activities must work within the learner's existing subsite.
 
 ### 5.3 Agent 3: Lesson Writer
 
@@ -596,6 +646,10 @@ Mastery criteria:
 Activity seed:
 {activity seed JSON from lesson plan}
 
+Creator capabilities:
+- can_create_sites: true
+- site_context: main site
+
 Admin feedback on previous activity (if any): The rubric criteria are too vague — make them more specific.
 ```
 
@@ -636,6 +690,7 @@ Admin feedback on previous activity (if any): The rubric criteria are too vague 
 - `milestone`: Optional achievement label (null if none). Examples: "Portfolio Started", "First Draft Complete", "All Objectives Covered", "Portfolio Delivered".
 - Activity must directly test the learning objective — challenging but achievable.
 - Anchor in real-world application, not hypothetical scenarios.
+- **Permission-aware instructions:** When `can_create_sites` is false, activity instructions must not assume a fresh/empty site or require site-level configuration (theme changes, plugin installs). Direct the learner to create content within their existing site structure.
 
 ### 5.5 Agent 5: Activity Reviewer
 
@@ -1316,18 +1371,23 @@ Request → Validate → Create Course Term → Phase 0 → Per-Objective Loop �
 For each objective (index 0 to N-1):
 
 1. **Check for existing content** — if lesson group already has content (retry scenario), skip
-2. **Lesson Planner** — call with objective, narrative description, all objectives (for scope control), preset title from Phase 0, target lesson count, work product context, and any admin feedback
+2. **Lesson Planner** — call with objective, narrative description, all objectives (for scope control), preset title from Phase 0, target lesson count, work product context, creator's capabilities (see Section 4.7.6), and any admin feedback
 3. Validate plan output. Retry once on failure.
 4. **Create `lesson_group` tag** — store the full lesson plan on the tag's term meta
+
+The Lesson Planner may produce 1–4 lesson outlines per objective. Each lesson outline triggers its own Lesson Writer → Activity Creator → Activity Reviewer cycle:
+
 5. **For each lesson in the plan** (1 to lesson_count):
-   a. **Lesson Writer** — call with the specific lesson outline, mastery criteria, and course description
+   a. **Lesson Writer** — call with the specific lesson outline, mastery criteria, and course description. Each lesson in the plan gets its own Writer call — a plan with 3 lessons means 3 separate Writer invocations.
    b. Validate content output. Retry once on failure.
-   c. **Activity Creator** — call with activity seed, objective, mastery criteria, activity type, work product context, and course position from the plan
+   c. **Activity Creator** — call with activity seed, objective, mastery criteria, activity type, work product context, creator's capabilities, and course position from the plan
    d. Validate activity output. Retry once on failure.
    e. **Activity Reviewer** — call with the generated activity, mastery criteria, and work product context
    f. Validate review output. If `revision_needed`, send suggestions back to Activity Creator for one revision attempt.
    g. **Create WordPress post** — `learn` CPT, authored by 1111 Agent user, assigned to `course` taxonomy term and `lesson_group` tag, with all meta (including activity, gamification, portfolio data)
    h. **Commit and report progress** — save post, update stepper
+
+A course with 3 objectives and `lessons_per_objective` = 2 produces: 3 Planner calls → 6 Writer calls → 6 Activity Creator calls → 6 Activity Reviewer calls → 6 lesson posts + 1 assessment post.
 
 ### 11.4 Phase Final: Assessment
 
@@ -1629,32 +1689,29 @@ This mirrors [Rule #10 from the extension's CLAUDE.md](https://github.com/1111ph
 
 ## 16. Non-Goals (Explicitly Out of Scope)
 
-> **Note:** Telemetry, assessments, learner-submitted assessment grading, and multi-site are no longer non-goals — see Sections 4.7, 5.5–5.7, and 15.
+> **Note:** Telemetry, assessments, learner-submitted assessment grading, enrollment, and multi-site are no longer non-goals — see Sections 4.7, 5.5–5.7, and 15.
 
 These are intentionally excluded from Learn:
 
-1. **Learner profiles** — No tracking of individual learner preferences or adaptive personalization. (The plugin tracks submissions and assessment results per learner, but does not build a learner profile with strengths, weaknesses, or pacing data — that belongs to the Administrator companion plugin.)
-2. **Enrollment / access restrictions** — No learner enrollment workflow or content gating. Subsite provisioning (Section 4.7.3) is handled by the companion Administrator plugin or manual network admin setup. The Learn plugin assumes subsites exist.
-3. **Certificates or badges** — No completion rewards beyond the generated `completion_message` and portfolio framing. Actual certificate generation belongs to a companion plugin.
-4. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
-5. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
-6. **On-demand generation** — Unlike School, all lessons are generated upfront (no need for on-demand since there's no learner progression to gate on).
-7. **Learner-facing course navigation** — The plugin does not provide a frontend UI for browsing courses, viewing progress, or navigating between lessons. That experience is built by themes or the Administrator companion plugin.
-8. **XP tracking per learner** — The plugin generates XP values and records assessment scores, but does not maintain a running XP total per learner. Cumulative XP tracking belongs to the Administrator companion plugin.
+1. **Learner profiles** — No tracking of individual learner preferences or adaptive personalization. The plugin tracks submissions and assessment results per learner, but does not build a learner profile with strengths, weaknesses, or pacing data.
+2. **Certificates or badges** — No completion rewards beyond the generated `completion_message` and portfolio framing.
+3. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
+4. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
+5. **On-demand generation** — Unlike School, all lessons are generated upfront (no need for on-demand since there's no learner progression to gate on).
+6. **Learner-facing course navigation** — The plugin does not provide a frontend UI for browsing courses, viewing progress, or navigating between lessons. That experience is built by themes.
+7. **XP tracking per learner** — The plugin generates XP values and records assessment scores, but does not maintain a running XP total per learner.
 
 ---
 
 ## 17. Future: Learn Administrator (Companion Plugin)
 
-With learner assessment grading, WordPress-native portfolio creation, and Multisite now part of the Learn plugin, the Administrator companion plugin focuses on the **learner experience layer**:
+With enrollment, learner assessment grading, WordPress-native portfolio creation, and Multisite all part of the Learn plugin, the Administrator companion plugin focuses on the **learner experience layer**:
 
 - **Learner-facing course navigation** — browse courses, view lesson sequence, track which activities are completed/pending
 - **Progress tracking** — completion status per lesson, per activity, per course. Visual progress bars and dashboards.
 - **Learner profiles** with adaptive content (following the learn-extension's Learner Profile Agent pattern: monotonically growing profile with strengths, weaknesses, pacing, preferences)
 - **Cumulative XP tracking** — learners earn the `xp_value` defined on each activity/assessment when they complete it (based on Learn's assessment scores), with milestone celebrations and leaderboards
 - **Portfolio presentation** — learners view their accumulated WordPress content with a contribution timeline (following the learn-extension's Work Detail "build timeline" view). Since portfolio items are WordPress pages/posts on the learner's subsite, the Administrator plugin provides a curated portfolio view across all courses.
-- **Subsite provisioning** — automated creation of learner subsites on the Multisite network when a learner enrolls in their first course
-- **Enrollment and access control** — course enrollment, content gating, learner onboarding
 - **Analytics dashboard** — admin-facing analytics: completion rates, average assessment scores, time-to-completion, common feedback patterns
 - **Certificates** — generate completion certificates based on course completion and assessment scores
 
