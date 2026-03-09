@@ -82,6 +82,7 @@ require_once LEARN_PLUGIN_DIR . 'includes/class-api-client.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-prompt-loader.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-validator.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-orchestrator.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-admin-page.php';
 
 /**
  * Plugin activation — network-wide.
@@ -202,6 +203,7 @@ add_action( '1111_learn_generation_step', array( 'Learn_Orchestrator', 'execute_
  */
 function learn_admin_init() {
 	Learn_Settings::init();
+	Learn_Admin_Page::init();
 }
 add_action( 'admin_init', 'learn_admin_init' );
 
@@ -265,19 +267,23 @@ function learn_get_menu_icon() {
 }
 
 /**
- * Render the dashboard page placeholder.
+ * Render the dashboard page.
  */
 function learn_render_dashboard_page() {
-	echo '<div class="wrap"><h1>' . esc_html__( 'Learn Dashboard', 'learn' ) . '</h1>';
-	echo '<p>' . esc_html__( 'Course creation dashboard — coming in Phase 3.', 'learn' ) . '</p></div>';
+	if ( ! is_super_admin() ) {
+		wp_die( esc_html__( 'You do not have permission to access this page.', 'learn' ) );
+	}
+	include LEARN_PLUGIN_DIR . 'admin/views/dashboard.php';
 }
 
 /**
- * Render the learner progress page placeholder.
+ * Render the learner progress page.
  */
 function learn_render_progress_page() {
-	echo '<div class="wrap"><h1>' . esc_html__( 'Learner Progress', 'learn' ) . '</h1>';
-	echo '<p>' . esc_html__( 'Learner progress dashboard — coming in Phase 3.', 'learn' ) . '</p></div>';
+	if ( ! is_super_admin() ) {
+		wp_die( esc_html__( 'You do not have permission to access this page.', 'learn' ) );
+	}
+	include LEARN_PLUGIN_DIR . 'admin/views/learner-progress.php';
 }
 
 /**
@@ -307,6 +313,45 @@ function learn_admin_enqueue( $hook ) {
 			array(),
 			LEARN_VERSION
 		);
+
+		wp_enqueue_script(
+			'learn-admin',
+			LEARN_PLUGIN_URL . 'admin/js/admin.js',
+			array(),
+			LEARN_VERSION,
+			true
+		);
+
+		wp_localize_script( 'learn-admin', 'learnAdmin', array(
+			'nonce'        => wp_create_nonce( '1111_learn_dashboard' ),
+			'dashboardUrl' => admin_url( 'admin.php?page=learn-dashboard' ),
+			'i18n'         => array(
+				'titleRequired'     => __( 'Course title is required.', 'learn' ),
+				'titleMinLength'    => __( 'Course title must be at least 3 characters.', 'learn' ),
+				'descRequired'      => __( 'Course description is required.', 'learn' ),
+				'descMinLength'     => __( 'Course description must be at least 20 characters.', 'learn' ),
+				'objRequired'       => __( 'At least one learning objective is required.', 'learn' ),
+				'objMinLength'      => __( 'Objective %d must be at least 10 characters.', 'learn' ),
+				'objectiveN'        => __( 'Objective %d', 'learn' ),
+				'remove'            => __( 'Remove', 'learn' ),
+				'removeObjective'   => __( 'Remove objective %d', 'learn' ),
+				'generating'        => __( 'Generating...', 'learn' ),
+				'generateCourse'    => __( 'Generate Course', 'learn' ),
+				'generatingCourse'  => __( 'Generating Course', 'learn' ),
+				'generationComplete' => __( 'Generation Complete', 'learn' ),
+				'generationFailed'  => __( 'Generation Failed', 'learn' ),
+				'describingCourse'  => __( 'Establishing course narrative...', 'learn' ),
+				'creatingAssessment' => __( 'Creating final assessment...', 'learn' ),
+				'stepComplete'      => __( 'Complete', 'learn' ),
+				'stepInProgress'    => __( 'In progress', 'learn' ),
+				'stepPending'       => __( 'Pending', 'learn' ),
+				'publishCourse'     => __( 'Publish Course', 'learn' ),
+				'publishing'        => __( 'Publishing...', 'learn' ),
+				'publishError'      => __( 'Failed to publish course.', 'learn' ),
+				'retryError'        => __( 'Failed to retry generation.', 'learn' ),
+				'networkError'      => __( 'Network error. Please try again.', 'learn' ),
+			),
+		) );
 	}
 }
 add_action( 'admin_enqueue_scripts', 'learn_admin_enqueue' );

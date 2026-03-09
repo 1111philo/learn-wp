@@ -29,3 +29,530 @@
 .learn-agent-avatar {
 	border-radius: 2px;
 }
+
+/* Cards */
+.learn-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px 24px;
+	margin-bottom: 20px;
+	box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.04 );
+}
+
+.learn-card h2 {
+	margin-top: 0;
+	padding-top: 0;
+}
+
+/* Form fields */
+.learn-field {
+	margin-bottom: 20px;
+}
+
+.learn-field label,
+.learn-field legend {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.learn-field input[type="text"],
+.learn-field textarea {
+	width: 100%;
+	max-width: 600px;
+}
+
+.learn-field fieldset {
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+
+.learn-field .description {
+	color: #646970;
+	font-style: italic;
+	margin-top: 4px;
+}
+
+.learn-field-error {
+	color: #d63638;
+	font-size: 13px;
+	margin-top: 4px;
+}
+
+.learn-field-invalid {
+	border-color: #d63638 !important;
+	box-shadow: 0 0 0 1px #d63638 !important;
+}
+
+/* Form errors summary */
+.learn-form-errors {
+	background: #fcf0f1;
+	border: 1px solid #d63638;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin-bottom: 20px;
+	color: #d63638;
+}
+
+.learn-form-errors p {
+	margin: 4px 0;
+}
+
+/* Form actions */
+.learn-form-actions {
+	margin-top: 24px;
+	padding-top: 16px;
+	border-top: 1px solid #c3c4c7;
+}
+
+/* Objective repeater */
+.learn-objective-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 8px;
+	flex-wrap: wrap;
+}
+
+.learn-objective-row input[type="text"] {
+	flex: 1;
+	min-width: 300px;
+	max-width: 600px;
+}
+
+.learn-objective-row .learn-field-error {
+	flex-basis: 100%;
+}
+
+.learn-remove-objective {
+	flex-shrink: 0;
+}
+
+#learn-add-objective {
+	margin-top: 4px;
+}
+
+/* Progress stepper */
+.learn-stepper {
+	margin: 16px 0;
+}
+
+.learn-step {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 0;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 14px;
+}
+
+.learn-step:last-child {
+	border-bottom: 0;
+}
+
+.learn-step-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	font-size: 14px;
+	flex-shrink: 0;
+}
+
+.learn-step-icon--complete {
+	background: #00a32a;
+	color: #fff;
+}
+
+.learn-step-icon--active {
+	background: #2271b1;
+	border: 3px solid #2271b1;
+	animation: learn-pulse 1.5s ease-in-out infinite;
+}
+
+.learn-step-icon--pending {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+@keyframes learn-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.4; }
+}
+
+.learn-step--complete .learn-step-label {
+	color: #1d2327;
+}
+
+.learn-step--active .learn-step-label {
+	color: #2271b1;
+	font-weight: 600;
+}
+
+.learn-step--pending .learn-step-label {
+	color: #646970;
+}
+
+.learn-step-error {
+	background: #fcf0f1;
+	border: 1px solid #d63638;
+	border-radius: 4px;
+	padding: 10px 14px;
+	margin-top: 12px;
+	color: #d63638;
+	font-size: 13px;
+}
+
+#learn-progress-actions {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid #c3c4c7;
+	display: flex;
+	gap: 8px;
+}
+
+/* Status badges */
+.learn-status {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.learn-status--generating {
+	background: #dff0ff;
+	color: #2271b1;
+}
+
+.learn-status--complete {
+	background: #edf8e8;
+	color: #007017;
+}
+
+.learn-status--published {
+	background: #1d2327;
+	color: #fff;
+}
+
+.learn-status--failed {
+	background: #fcf0f1;
+	color: #d63638;
+}
+
+.learn-status--active {
+	background: #edf8e8;
+	color: #007017;
+}
+
+/* Courses table */
+.learn-courses-table .learn-course-desc {
+	color: #646970;
+	font-size: 12px;
+}
+
+/* Back link */
+.learn-back-link {
+	text-decoration: none;
+	font-size: 14px;
+}
+
+/* Review header */
+.learn-review-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.learn-review-header h1 {
+	margin: 0;
+	padding: 0;
+}
+
+/* Review sections */
+.learn-review-section {
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.learn-review-section:last-child {
+	border-bottom: 0;
+	padding-bottom: 0;
+	margin-bottom: 0;
+}
+
+.learn-review-section h3 {
+	margin: 0 0 8px;
+	font-size: 14px;
+	color: #1d2327;
+}
+
+.learn-review-section h4 {
+	margin: 0 0 6px;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.learn-review-meta {
+	display: flex;
+	gap: 20px;
+	padding-top: 12px;
+	border-top: 1px solid #f0f0f1;
+	font-size: 13px;
+	color: #646970;
+}
+
+/* Inline list */
+.learn-inline-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.learn-inline-list li {
+	background: #f0f0f1;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+/* Lesson details (accordion) */
+.learn-lesson-details {
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	margin-bottom: 8px;
+}
+
+.learn-lesson-details summary {
+	padding: 12px 16px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+	font-weight: 600;
+	user-select: none;
+}
+
+.learn-lesson-details summary:hover {
+	background: #f6f7f7;
+}
+
+.learn-lesson-details[open] summary {
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.learn-lesson-content {
+	padding: 16px;
+}
+
+/* Activity type badges */
+.learn-badge {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.learn-badge--explore {
+	background: #dff0ff;
+	color: #2271b1;
+}
+
+.learn-badge--apply {
+	background: #fcf0e3;
+	color: #996800;
+}
+
+.learn-badge--create {
+	background: #edf8e8;
+	color: #007017;
+}
+
+.learn-badge--final {
+	background: #1d2327;
+	color: #fff;
+}
+
+.learn-xp {
+	font-size: 12px;
+	color: #646970;
+	margin-left: auto;
+}
+
+/* Review verdict */
+.learn-verdict {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	padding: 1px 6px;
+	border-radius: 3px;
+	margin-left: 8px;
+}
+
+.learn-verdict--approved {
+	background: #edf8e8;
+	color: #007017;
+}
+
+.learn-verdict--revision_needed {
+	background: #fcf0e3;
+	color: #996800;
+}
+
+/* Content preview */
+.learn-content-preview {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 16px;
+	font-size: 13px;
+	line-height: 1.6;
+	color: #50575e;
+	max-height: 200px;
+	overflow-y: auto;
+	margin-bottom: 8px;
+}
+
+.learn-view-full {
+	font-size: 13px;
+	text-decoration: none;
+}
+
+/* Activity section */
+.learn-activity-section {
+	background: #f6f7f7;
+	border-radius: 4px;
+	padding: 12px 16px;
+}
+
+/* Publish card */
+.learn-publish-card {
+	background: #f0f6fc;
+	border-color: #2271b1;
+}
+
+/* Scoring guide */
+.learn-scoring-guide {
+	margin: 0;
+}
+
+.learn-scoring-guide dt {
+	font-weight: 600;
+	margin-top: 8px;
+}
+
+.learn-scoring-guide dd {
+	margin-left: 16px;
+	color: #50575e;
+}
+
+/* Rubric items */
+.learn-rubric-item {
+	margin-bottom: 12px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.learn-rubric-item:last-child {
+	border-bottom: 0;
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+/* Publish dialog */
+.learn-dialog {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100100;
+	background: rgba( 0, 0, 0, 0.5 );
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.learn-dialog-content {
+	background: #fff;
+	border-radius: 8px;
+	padding: 24px 32px;
+	max-width: 480px;
+	width: 90%;
+	box-shadow: 0 4px 24px rgba( 0, 0, 0, 0.2 );
+}
+
+.learn-dialog-content h2 {
+	margin-top: 0;
+}
+
+.learn-dialog-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	margin-top: 20px;
+}
+
+/* Progress bar */
+.learn-progress-bar {
+	width: 100%;
+	max-width: 120px;
+	height: 8px;
+	background: #dcdcde;
+	border-radius: 4px;
+	overflow: hidden;
+	display: inline-block;
+	vertical-align: middle;
+	margin-right: 8px;
+}
+
+.learn-progress-fill {
+	height: 100%;
+	background: #2271b1;
+	border-radius: 4px;
+	transition: width 0.3s;
+}
+
+.learn-progress-text {
+	font-size: 12px;
+	color: #646970;
+}
+
+/* Responsive — min-width 782px per WordPress admin breakpoint */
+@media ( max-width: 782px ) {
+	.learn-objective-row {
+		flex-direction: column;
+	}
+
+	.learn-objective-row input[type="text"] {
+		min-width: 0;
+		width: 100%;
+	}
+
+	.learn-review-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.learn-lesson-details summary {
+		flex-wrap: wrap;
+	}
+
+	.learn-xp {
+		margin-left: 0;
+	}
+}
