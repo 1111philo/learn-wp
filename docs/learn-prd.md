@@ -373,6 +373,7 @@ Multisite Network
 ├── Learner Subsite: jane.example.com
 │   ├── learn CPT (COPY of published course content)
 │   ├── Learner panel (course selection, progress tracking)
+│   ├── Course navigation (lesson pages, prev/next, activity submission)
 │   ├── Pages/posts created by the learner as portfolio work
 │   ├── Personalized content (via learner feedback → regeneration)
 │   ├── Work product content assessed by Activity Assessment Agent
@@ -1103,6 +1104,8 @@ Safety violations are never retried — an error is shown and the generation sto
 │       ├── learner-progress.php    Learner progress dashboard template (main site)
 │       ├── learner-panel.php       Learner panel template (learner subsites)
 │       ├── course-catalog.php      Course selection catalog template (learner subsites)
+│       ├── course-landing.php      Course landing page with lesson list (frontend, learner subsites)
+│       ├── lesson-navigation.php   Lesson page with prev/next, breadcrumb, activity submission (frontend)
 │       ├── registration.php        Learner registration form template (frontend)
 │       ├── settings.php            Settings page template
 │       └── generating.php          Generation progress template (partial)
@@ -1365,7 +1368,23 @@ On successful registration, the plugin creates the user, provisions their subsit
 - **Select Course** button — copies the course content from the main site to the learner's subsite and enrolls them
 - Learners can select multiple courses; each is tracked independently
 
-#### 8.7.3 Progress Tracking
+#### 8.7.3 Course Navigation
+
+When a learner is enrolled in a course, their subsite provides a **frontend course navigation UI** for browsing and progressing through lessons:
+
+- **Course landing page** — overview of the course narrative, work product description, and a list of all lesson groups with their lessons. Available as a shortcode (`[learn_course]`) or block.
+- **Lesson navigation** — each lesson page includes:
+  - **Previous / Next links** — sequential navigation between lessons in course order
+  - **Breadcrumb** — Course → Lesson Group → Current Lesson
+  - **Progress indicator** — shows position in the course (e.g., "Lesson 3 of 7") and completion status of each lesson
+  - **Activity status badge** — whether the lesson's activity is pending, submitted, or assessed (with score)
+- **Lesson group headers** — when navigating between lesson groups, a transition page shows the group's objective and how it connects to the narrative arc
+- **Activity submission** — at the bottom of each lesson, the activity prompt and instructions are displayed with a **Submit for Assessment** button. The learner creates their WordPress content as directed, then submits from this UI.
+- **Assessment results** — after submission, the lesson page shows the Activity Assessment Agent's feedback inline: score, strengths, improvements, and advance/revise recommendation
+
+The navigation respects the learner's theme — it outputs semantic HTML with CSS classes that themes can style. The plugin provides minimal default styling sufficient for usability but designed to be overridden.
+
+#### 8.7.4 Progress Tracking
 
 - **Active courses** — list of enrolled courses with progress indicators
 - Per-course view shows:
@@ -1375,7 +1394,7 @@ On successful registration, the plugin creates the user, provisions their subsit
   - Milestone achievements
   - Current position in the course sequence
 
-#### 8.7.4 Learner Feedback on Content
+#### 8.7.5 Learner Feedback on Content
 
 Learners can provide feedback on **their own copy** of course content — the same feedback UI surfaces used during course review (sidebar panels, meta boxes, taxonomy term editors) are available on learner subsites. When a learner submits feedback:
 
@@ -1921,8 +1940,7 @@ These are intentionally excluded from Learn:
 3. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
 4. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
 5. **On-demand generation** — Unlike School, all lessons are generated upfront (no need for on-demand since there's no learner progression to gate on).
-6. **Learner-facing course navigation** — The learner panel provides course selection and progress tracking, but does not provide a frontend UI for browsing lessons or navigating between them. That experience is built by themes.
-7. **Cumulative XP tracking** — The plugin tracks XP per enrollment but does not maintain a cross-course cumulative XP total, leaderboards, or streak mechanics.
+6. **Cumulative XP tracking** — The plugin tracks XP per enrollment but does not maintain a cross-course cumulative XP total, leaderboards, or streak mechanics.
 
 ---
 
@@ -1930,7 +1948,6 @@ These are intentionally excluded from Learn:
 
 With enrollment, learner self-registration, learner assessment grading, WordPress-native portfolio creation, content copy distribution, learner feedback, and Multisite all part of the Learn plugin, the Administrator companion plugin focuses on the **advanced learner experience layer**:
 
-- **Learner-facing course navigation** — rich frontend UI for browsing lessons, navigating between them, tracking which activities are completed/pending (beyond the basic learner panel)
 - **Learner profiles** with adaptive content (following the learn-extension's Learner Profile Agent pattern: monotonically growing profile with strengths, weaknesses, pacing, preferences)
 - **Cumulative XP tracking** — cross-course XP totals, milestone celebrations, and leaderboards
 - **Portfolio presentation** — learners view their accumulated WordPress content with a contribution timeline (following the learn-extension's Work Detail "build timeline" view). Since portfolio items are WordPress pages/posts on the learner's subsite, the Administrator plugin provides a curated portfolio view across all courses.
@@ -2066,6 +2083,13 @@ The Learn plugin is designed so the Administrator plugin can build on top of its
   - [ ] Course catalog: browse published courses from main site
   - [ ] Course selection: copy course content on enrollment
   - [ ] Progress tracking: lessons completed, XP earned, milestones, assessment scores
+  - [ ] **Course navigation** (frontend):
+    - [ ] Course landing page (shortcode `[learn_course]` or block): narrative overview, lesson list with status
+    - [ ] Lesson page: previous/next links, breadcrumb, progress indicator, activity status badge
+    - [ ] Lesson group transition headers (objective + narrative connection)
+    - [ ] Activity submission UI at bottom of lesson page (Submit for Assessment button)
+    - [ ] Inline assessment results display (score, strengths, improvements, recommendation)
+    - [ ] Semantic HTML with CSS classes for theme overriding; minimal default styling
 - [ ] Prevent learners from accessing course creation UI on their subsite
 
 ### Phase 8: Telemetry
