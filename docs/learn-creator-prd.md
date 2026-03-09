@@ -34,6 +34,7 @@ The WordPress plugin takes the best of both: the narrative threading and backwar
 5. Produce standard WordPress posts (custom post type `learn`) organized under a `course` taxonomy — compatible with any theme, page builder, or LMS plugin.
 6. Keep the plugin self-contained: no build step, no JavaScript framework, no external dependencies beyond the Anthropic API.
 7. Meet WCAG 2.1 AA accessibility standards in all admin UI and generated lesson content.
+8. Continuously self-improve through telemetry: collect anonymous usage data from real course generations, feed it back to learn-service, and use it to automatically create PRs that refine agent prompts — so every generation makes the next one better, without human intervention in the feedback loop.
 
 ---
 
@@ -135,6 +136,7 @@ These principles are proven in production and must carry forward:
 - **Scope control:** Each lesson covers ONLY its assigned objective. The planner receives the full objective list but is explicitly told not to teach other objectives. This prevents scope creep and repetition.
 - **Agents are functions, not frameworks:** Each agent takes typed input, returns typed output, validates against a schema, and retries on failure. No memory across invocations, no autonomous decisions.
 - **Prompts are data, not code:** System prompts live in Markdown files. Dynamic context (course data, objectives) goes in the user message. Changing agent behavior never requires touching PHP.
+- **Built to be improved by agents:** Every design choice — Markdown prompt files, structured JSON output, deterministic validation with specific error messages, telemetry that captures failure patterns — exists so that an AI agent can diagnose what's wrong and propose a fix. The plugin is not just *used* by AI agents; it's *maintained* by them through the telemetry → PR pipeline (Section 15).
 
 ### 4.4 Custom Post Type: `learn`
 
@@ -794,7 +796,13 @@ The plugin collects anonymous telemetry to continuously improve agent prompt qua
 
 ### 15.1 Purpose
 
-Telemetry exists for one reason: **improving prompts**. Data collected from real course generations is analyzed to identify patterns — which agents produce weak output, which validation rules fire most often, what kinds of courses cause failures — and used to create PRs against the `prompts/` directory with improved agent instructions.
+Telemetry is the plugin's **primary self-improvement mechanism**. The goal is a closed loop: real usage data flows into learn-service, automated analysis identifies what's working and what isn't, and AI agents create PRs with prompt improvements — no human has to initiate the cycle. Over time, this means every course generation across every installation makes the prompts better for everyone.
+
+Concretely, telemetry data is used to:
+- Identify which agents produce weak output and why (validation failure patterns, retry rates)
+- Detect which generated fields admins consistently edit (signaling the agent underperformed)
+- Spot course topics or objective structures that cause disproportionate failures
+- Automatically propose prompt changes as PRs that agents can build, test, and submit
 
 ### 15.2 Consent and Opt-In
 
@@ -852,22 +860,66 @@ Telemetry is transmitted to the shared 1111 learn-service backend, the same serv
 
 ### 15.8 Prompt Improvement Pipeline
 
-This is the core value of telemetry — a continuous feedback loop from real usage to better prompts:
+This is the core value of telemetry — an **automated, agent-driven feedback loop** from real usage to better prompts. The loop runs continuously without human initiation:
 
-1. **Collect:** Telemetry events flow into learn-service from both the WordPress plugin and the Chrome extension.
-2. **Analyze:** Periodic analysis identifies patterns:
+```
+Usage data (all installations)
+    │
+    ▼
+┌─────────────────────────────────────────────────┐
+│  learn-service aggregates telemetry              │
+│  Validation failures, retry rates, edit signals  │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  Automated analysis (scheduled)                  │
+│  Identifies patterns, ranks improvement targets  │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  AI agent creates PR against prompts/*.md        │
+│  Cites telemetry evidence, proposes specific     │
+│  prompt edits with before/after reasoning        │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  Human review (Persona 3.3) → merge             │
+│  Prompt editors verify pedagogical alignment     │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  Improved prompts take effect immediately        │
+│  Next generation uses updated prompts/*.md       │
+│  Telemetry measures whether the change helped    │
+└───────────────────────────────────────────────────┘
+```
+
+**Step 1 — Collect:** Telemetry events flow into learn-service from both the WordPress plugin and the Chrome extension. All installations contribute to the same improvement pool.
+
+**Step 2 — Analyze:** Scheduled analysis runs against aggregated telemetry to identify actionable patterns:
    - Which agents have the highest validation failure rates?
    - Which validation rules fire most often (e.g., `lesson_body` too short, `mastery_criteria` count out of range)?
-   - Do certain course topics (inferred from objective structure, not content) cause more failures?
+   - Do certain course topics (inferred from objective structure, not content) cause disproportionate failures?
    - When admins edit generated content before publishing, which fields do they change most?
    - Are retry attempts succeeding or failing with the same errors?
-3. **Propose:** Analysis results are used to create PRs against the plugin repository, targeting `prompts/*.md` files with specific improvements:
+   - After a previous prompt change shipped, did the target metric actually improve?
+
+**Step 3 — Propose:** An AI agent reads the current prompt files and the telemetry analysis, then creates a PR against the plugin repository targeting `prompts/*.md` with specific improvements:
    - Tightened constraints where agents consistently under-deliver
    - Relaxed constraints where validation is too aggressive
    - Added examples where agents misinterpret the output format
    - Reworded instructions where a specific failure pattern recurs
-4. **Review:** PRs are reviewed by prompt editors (Persona 3.3) who can evaluate whether the proposed changes align with pedagogical goals.
-5. **Ship:** Merged prompt changes take effect immediately — no plugin update required, just a file change.
+   - Each PR cites the telemetry evidence (e.g., "Lesson Planner `mastery_criteria` count validation fails 18% of the time — adding an explicit count reminder to the prompt")
+
+**Step 4 — Review:** PRs are reviewed by prompt editors (Persona 3.3) who verify pedagogical alignment. This is the only human step — everything before it is automated.
+
+**Step 5 — Ship and measure:** Merged prompt changes take effect immediately for all installations — no plugin update required, just a file change. Subsequent telemetry measures whether the change actually improved the target metric, closing the loop. If a change didn't help (or made things worse), the next analysis cycle will flag it for further iteration.
+
+> **Design principle:** The plugin is built to be improved by agents. Telemetry data, prompt files as editable Markdown, and structured validation errors are all designed so that an AI agent has everything it needs to diagnose a problem and propose a fix — without requiring a human to interpret logs or manually edit prompts.
 
 ### 15.9 Content Edit Tracking
 
@@ -1028,3 +1080,5 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 7. All admin UI passes WCAG 2.1 AA.
 8. Agent prompts can be modified in Markdown files and changes take effect immediately.
 9. A failed generation can be retried without losing already-generated lessons.
+10. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
+11. Prompt quality measurably improves over time: validation failure rates decrease, retry rates decrease, and the percentage of generated fields that admins edit before publishing decreases.
