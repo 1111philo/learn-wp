@@ -78,6 +78,10 @@ if ( ! learn_multisite_check() ) {
 require_once LEARN_PLUGIN_DIR . 'includes/class-post-type.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-agent-user.php';
 require_once LEARN_PLUGIN_DIR . 'includes/class-settings.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-api-client.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-prompt-loader.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-validator.php';
+require_once LEARN_PLUGIN_DIR . 'includes/class-orchestrator.php';
 
 /**
  * Plugin activation — network-wide.
@@ -187,6 +191,11 @@ function learn_init() {
 	Learn_Post_Type::register();
 }
 add_action( 'init', 'learn_init' );
+
+/**
+ * Register WP-Cron hook for generation pipeline steps.
+ */
+add_action( '1111_learn_generation_step', array( 'Learn_Orchestrator', 'execute_step' ), 10, 2 );
 
 /**
  * Initialize admin features.
