@@ -434,7 +434,8 @@ learned-wp-creator/
 │   ├── class-api-client.php        Anthropic API HTTP client
 │   ├── class-orchestrator.php      Agent orchestration, pipeline, validation
 │   ├── class-admin-page.php        Dashboard page registration and rendering
-│   └── class-settings.php          Settings page (API key, model config)
+│   ├── class-settings.php          Settings page (API key, model config)
+│   └── class-telemetry.php         Event collection, buffering, learn-service transmission
 │
 ├── admin/
 │   ├── css/
@@ -507,6 +508,7 @@ learned-wp-creator/
 | Default Model | Select | Default: `claude-sonnet-4-6`. Used by Lesson Writer (needs more tokens). |
 | Max Tokens (Plan) | Number | Default: 2048. Range: 512–4096. |
 | Max Tokens (Content) | Number | Default: 8192. Range: 1024–16384. |
+| Share Data with 1111 | Checkbox | Default: OFF. Consent dialog on first enable. See Section 15. |
 
 Settings are saved using the WordPress Settings API with nonce verification and capability checks.
 
@@ -548,6 +550,10 @@ Settings are saved using the WordPress Settings API with nonce verification and 
 | `1111_learn_default_model` | Model ID for Lesson Writer |
 | `1111_learn_plan_max_tokens` | Max tokens for planning agents |
 | `1111_learn_content_max_tokens` | Max tokens for content generation |
+| `1111_learn_telemetry_enabled` | Boolean — telemetry opt-in status |
+| `1111_learn_telemetry_consent_at` | ISO 8601 timestamp of consent |
+| `1111_learn_service_credential` | Encrypted anonymous credential from learn-service |
+| `1111_learn_anonymous_id` | Random installation identifier |
 
 ---
 
@@ -758,7 +764,122 @@ All admin UI must meet WCAG 2.1 AA:
 
 ---
 
-## 15. Non-Goals (Explicitly Out of Scope)
+## 15. Telemetry and Prompt Improvement
+
+The plugin collects anonymous telemetry to continuously improve agent prompt quality. This follows the same pattern proven in [1111 Learn](https://github.com/1111philo/learn-extension), adapted from browser-side event buffering to server-side WordPress logging, and transmitted to the shared [learn-service](https://github.com/1111philo/learn-service) backend.
+
+### 15.1 Purpose
+
+Telemetry exists for one reason: **improving prompts**. Data collected from real course generations is analyzed to identify patterns — which agents produce weak output, which validation rules fire most often, what kinds of courses cause failures — and used to create PRs against the `prompts/` directory with improved agent instructions.
+
+### 15.2 Consent and Opt-In
+
+- **Default:** Telemetry is OFF. No data is collected or transmitted until the admin explicitly enables it.
+- **Toggle:** "Share anonymous usage data with 1111" checkbox on the Settings page.
+- **Consent dialog:** On first enable, a modal explains exactly what is collected, what is never collected, how data is stored, and how to withdraw consent. The admin must confirm before telemetry activates.
+- **Withdrawal:** Disabling the toggle immediately stops all data collection and transmission. No previously sent data is retroactively deleted (auto-expires per retention policy).
+
+### 15.3 Events Collected
+
+All events are recorded server-side during course generation and batched for transmission.
+
+| Event Type | When | Data Collected |
+|------------|------|----------------|
+| `course_started` | Admin clicks Generate Course | objectiveCount, pluginVersion, wpVersion, phpVersion |
+| `agent_request` | Before each agent call | agentName, model, promptFileHash (not contents), inputTokenEstimate |
+| `agent_response` | After each agent call | agentName, model, outputTokens, latencyMs, responseJson |
+| `validation_failure` | Agent output fails schema validation | agentName, validationErrors, failedResponseJson, retried (bool) |
+| `retry_outcome` | After automatic retry | agentName, succeeded (bool), originalErrors, retryErrors |
+| `course_completed` | All lessons generated successfully | objectiveCount, totalLatencyMs, totalTokens, lessonCount |
+| `course_failed` | Pipeline fails fatally | failedAgent, failedObjectiveIndex, errorType, errorMessage |
+| `content_edited` | Admin edits a generated lesson before publishing | postId, fieldsChanged (list of field names only — not content) |
+
+### 15.4 What Is Never Collected
+
+Following the extension's `stripBinaries` pattern, these are explicitly excluded:
+
+- **API keys** — never logged, never transmitted
+- **Course content** — lesson bodies, activity text, and learner-facing content are never sent. Only agent response JSON structure is captured for schema analysis.
+- **Personal information** — no admin names, emails, site URLs, or IP addresses
+- **WordPress credentials** — no auth tokens, cookies, or session data
+- **Prompt file contents** — only a hash of the prompt file is sent (to detect custom edits), never the full text
+
+### 15.5 Transmission to learn-service
+
+Telemetry is transmitted to the shared 1111 learn-service backend, the same service used by the Chrome extension.
+
+- **Endpoint:** `POST {learn-service-url}/v1/events`
+- **Authentication:** Anonymous credential obtained via `POST /v1/auth/register` on first enable (returns an opaque API key tied to a random anonymous ID)
+- **Buffering:** Events are accumulated in a WordPress transient during generation and flushed in a single batch on pipeline completion (or failure). No per-event HTTP calls.
+- **Fire-and-forget:** Transmission failures are silently discarded. Telemetry never blocks or delays course generation.
+- **Credential storage:** The anonymous service credential is stored encrypted in `wp_options` alongside the Anthropic API key.
+
+### 15.6 Anonymous Identification
+
+- Each WordPress installation receives a random anonymous ID on first registration: `wp_{random_hex_16}`
+- No correlation to site URL, admin identity, or Anthropic API key
+- The anonymous ID allows grouping events from the same installation to identify per-site patterns (e.g., "this site consistently gets validation failures from the Lesson Planner")
+
+### 15.7 Data Retention
+
+- All telemetry data is automatically deleted after **90 days** via DynamoDB TTL (matching the extension's retention policy)
+- No long-term archives or backups of telemetry data
+- Aggregated, anonymized insights (e.g., "Lesson Planner validation failure rate dropped from 12% to 4%") may persist indefinitely
+
+### 15.8 Prompt Improvement Pipeline
+
+This is the core value of telemetry — a continuous feedback loop from real usage to better prompts:
+
+1. **Collect:** Telemetry events flow into learn-service from both the WordPress plugin and the Chrome extension.
+2. **Analyze:** Periodic analysis identifies patterns:
+   - Which agents have the highest validation failure rates?
+   - Which validation rules fire most often (e.g., `lesson_body` too short, `mastery_criteria` count out of range)?
+   - Do certain course topics (inferred from objective structure, not content) cause more failures?
+   - When admins edit generated content before publishing, which fields do they change most?
+   - Are retry attempts succeeding or failing with the same errors?
+3. **Propose:** Analysis results are used to create PRs against the plugin repository, targeting `prompts/*.md` files with specific improvements:
+   - Tightened constraints where agents consistently under-deliver
+   - Relaxed constraints where validation is too aggressive
+   - Added examples where agents misinterpret the output format
+   - Reworded instructions where a specific failure pattern recurs
+4. **Review:** PRs are reviewed by prompt editors (Persona 3.2) who can evaluate whether the proposed changes align with pedagogical goals.
+5. **Ship:** Merged prompt changes take effect immediately — no plugin update required, just a file change.
+
+### 15.9 Content Edit Tracking
+
+When an admin edits a generated lesson in the block editor before publishing, the plugin records which fields were modified (title, body, excerpt) — but never the content itself. This signal is valuable for prompt improvement:
+
+- If 80% of admins edit the lesson title, the Course Describer prompt needs better title generation instructions.
+- If admins consistently shorten lesson bodies, the Lesson Writer is over-generating.
+- If activity instructions are frequently rewritten, the Activity Creator prompt needs refinement.
+
+This is tracked via a `save_post_learn` hook that compares the current post content against the original generated content stored in post meta.
+
+### 15.10 Options (wp_options)
+
+| Option key | Description |
+|------------|-------------|
+| `1111_learn_telemetry_enabled` | Boolean — telemetry opt-in status |
+| `1111_learn_telemetry_consent_at` | ISO 8601 timestamp of consent |
+| `1111_learn_service_credential` | Encrypted anonymous credential from learn-service |
+| `1111_learn_anonymous_id` | Random installation identifier |
+
+### 15.11 Privacy Documentation
+
+Any change that adds, removes, or modifies collected data must update:
+
+1. The consent dialog text on the Settings page
+2. The plugin's privacy policy section (README)
+3. The data-stripping logic that excludes sensitive fields
+4. The learn-service validation and documentation
+
+This mirrors [Rule #10 from the extension's CLAUDE.md](https://github.com/1111philo/learn-extension/blob/main/CLAUDE.md) — privacy changes are never a single-file edit.
+
+---
+
+## 16. Non-Goals (Explicitly Out of Scope)
+
+> **Note:** Telemetry is no longer a non-goal — see Section 15.
 
 These are intentionally excluded from 1111 Learn Creator:
 
@@ -771,12 +892,11 @@ These are intentionally excluded from 1111 Learn Creator:
 7. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
 8. **Multi-site support** — Single-site only for v1.
 9. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
-10. **Telemetry** — No usage tracking or data collection.
-11. **On-demand generation** — Unlike School, all lessons are generated upfront (no need for on-demand since there's no learner progression to gate on).
+10. **On-demand generation** — Unlike School, all lessons are generated upfront (no need for on-demand since there's no learner progression to gate on).
 
 ---
 
-## 16. Future: 1111 Learn Administrator (Companion Plugin)
+## 17. Future: 1111 Learn Administrator (Companion Plugin)
 
 A planned companion plugin will add:
 
@@ -791,7 +911,7 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 ---
 
-## 17. Development Guidelines
+## 18. Development Guidelines
 
 1. **No build step.** Vanilla PHP, JS, CSS. No Webpack, Sass, or npm.
 2. **WordPress coding standards.** Follow WordPress PHP and JavaScript coding standards.
@@ -814,7 +934,7 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 ---
 
-## 18. Implementation Phases
+## 19. Implementation Phases
 
 ### Phase 1: Foundation
 - [ ] Plugin bootstrap file with proper headers and ABSPATH checks
@@ -854,7 +974,16 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 - [ ] Incremental recovery: skip already-generated objectives on retry
 - [ ] Progress transients and polling responses
 
-### Phase 5: Polish and Quality
+### Phase 5: Telemetry
+- [ ] Telemetry class: event collection, buffering, batch flush
+- [ ] learn-service anonymous registration (`/v1/auth/register`)
+- [ ] Event transmission (`/v1/events`) with fire-and-forget error handling
+- [ ] Opt-in toggle on Settings page with consent dialog
+- [ ] Data stripping: ensure API keys, content, and PII are never included
+- [ ] Content edit tracking via `save_post_learn` hook (field names only, not content)
+- [ ] Wire telemetry events into orchestrator pipeline (agent_request, agent_response, validation_failure, etc.)
+
+### Phase 6: Polish and Quality
 - [ ] Accessibility audit: focus management, ARIA, keyboard, contrast
 - [ ] Security audit: nonces, capabilities, sanitization, escaping
 - [ ] Uninstall cleanup (`uninstall.php` — remove options, term meta, post meta)
@@ -864,7 +993,7 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 ---
 
-## 19. Success Criteria
+## 20. Success Criteria
 
 1. An administrator can generate a complete course (3–8 lessons, one per objective) from title + description + objectives in under 3 minutes.
 2. Generated lessons follow a visible narrative arc — they read as chapters in the same course, not disconnected topics.
