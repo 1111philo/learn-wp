@@ -2,7 +2,7 @@
 
 ## WordPress Plugin for AI-Powered Course Content Creation
 
-**Version:** 0.3.0-draft
+**Version:** 0.4.0-draft
 **Date:** 2026-03-09
 **Status:** Draft — awaiting review
 
@@ -10,9 +10,9 @@
 
 ## 1. Overview
 
-**1111 Learn Creator** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A four-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, and practice activities — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
+**1111 Learn Creator** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A six-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
 
-This plugin is **content-creation only** — it does not include assessments, learner profiles, progress tracking, or any learner-facing interactive features. Those concerns belong to a future companion plugin (1111 Learn Administrator).
+Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner accumulates across the course. The learner isn't just "completing exercises" — they're building a portfolio that proves what they can do. This follows the single-work-product pattern proven in 1111 Learn (Chrome extension), where all activities contribute to one persistent document that grows from first activity to final deliverable.
 
 ### 1.1 Lineage
 
@@ -21,20 +21,22 @@ This plugin adapts proven agent patterns from two existing 1111 projects:
 - **[1111 Learn](https://github.com/1111philo/learn-extension)** (Chrome extension) — Four-agent architecture: Course Creation → Activity Creation → Activity Assessment → Learner Profile. Prompts stored as Markdown files. Output validated deterministically before reaching the user. Retry-once on validation failure.
 - **[1111 School](https://github.com/1111philo/learn)** (full-stack web app) — Seven PydanticAI agents with backward design methodology: Course Describer → Lesson Planner → Lesson Writer → Activity Creator → Activity Reviewer → Assessment Creator → Assessment Reviewer. Narrative threading across lessons. Scope control to prevent objective bleed. On-demand lesson generation.
 
-The WordPress plugin takes the best of both: the narrative threading and backward design from School, the Markdown-file prompt editability from Learn, and a pipeline scoped to content creation only.
+The WordPress plugin takes the best of both: the narrative threading, backward design, and assessment pipeline from School; the Markdown-file prompt editability, portfolio work-product model, activity type progression, and assessment scoring from Learn; expanded with gamification mechanics that make every activity feel like building a portfolio piece.
 
 ---
 
 ## 2. Goals
 
 1. Let a WordPress administrator create a complete, structured course from three inputs: title, description, and learning objectives.
-2. Generate pedagogically sound lesson content using a four-agent pipeline, with prompts stored as editable Markdown files so AI agents can iterate on output quality through telemetry-driven PRs.
-3. Use backward design (define mastery → design evidence → build the path) to ensure lessons and activities are aligned to objectives.
+2. Generate pedagogically sound lesson content, activities, and assessments using a six-agent pipeline, with prompts stored as editable Markdown files so AI agents can iterate on output quality through telemetry-driven PRs.
+3. Use backward design (define mastery → design evidence → build the path) to ensure lessons, activities, and assessments are aligned to objectives.
 4. Thread a narrative arc across all lessons so the course reads as a coherent journey, not disconnected topics.
 5. Produce standard WordPress posts (custom post type `learn`) organized under a `course` taxonomy — compatible with any theme, page builder, or LMS plugin.
 6. Keep the plugin self-contained: no build step, no JavaScript framework, no external dependencies beyond the Anthropic API.
 7. Meet WCAG 2.1 AA accessibility standards in all admin UI and generated lesson content.
 8. Continuously self-improve through telemetry: collect anonymous usage data from real course generations, feed it back to learn-service, and use it to automatically create PRs that refine agent prompts — so every generation makes the next one better, without human intervention in the feedback loop.
+9. Make every activity and assessment a **portfolio artifact** — learners accumulate concrete, demonstrable work products across the course that prove what they can do.
+10. Use **gamification mechanics** (progressive activity types, mastery scoring, achievement milestones, streaks) to sustain engagement and make learning feel like building toward a tangible accomplishment.
 
 ---
 
@@ -84,9 +86,9 @@ All generated posts (`learn` CPT) are authored by this user. The `post_author` i
 
 ## 4. Architecture
 
-### 4.1 Four-Agent Pipeline
+### 4.1 Six-Agent Pipeline
 
-The generation pipeline uses four sequential agents. Each agent's output feeds into the next. This mirrors the proven patterns from 1111 School's generation service, adapted for WordPress.
+The generation pipeline uses six sequential agents. Each agent's output feeds into the next. This extends the proven four-agent content pipeline with two assessment agents from 1111 School, plus the portfolio work-product model and activity type progression from 1111 Learn (Chrome extension).
 
 ```
 Admin Input (title, description, objectives)
@@ -96,7 +98,8 @@ Admin Input (title, description, objectives)
 │  Agent 1: Course Describer                       │
 │  (fast model)                                    │
 │  Establishes narrative arc + lesson titles        │
-│  Output: narrative_description, lesson_previews   │
+│  Defines work product (portfolio artifact)        │
+│  Output: narrative, lessons, workProduct          │
 │  ◄── Course feedback triggers re-run             │
 └─────────────────────┬───────────────────────────┘
                       │
@@ -106,6 +109,7 @@ Admin Input (title, description, objectives)
 │  (fast model)                                    │
 │  Backward design: mastery → activity → outline(s)│
 │  May produce 1–4 lessons per objective            │
+│  Assigns activity types (explore/apply/create)    │
 │  Output: mastery_criteria, activity_seed, lessons │
 │  ◄── Lesson plan feedback triggers re-run        │
 └─────────────────────┬───────────────────────────┘
@@ -123,9 +127,32 @@ Admin Input (title, description, objectives)
 ┌─────────────────────────────────────────────────┐
 │  Agent 4: Activity Creator (per lesson)          │
 │  (fast model)                                    │
-│  Designs practice activity from activity seed     │
-│  Output: prompt, instructions, rubric, hints      │
+│  Designs activity as portfolio contribution       │
+│  Gamification: type progression, XP, milestones  │
+│  Output: prompt, instructions, rubric, hints,     │
+│          xp_value, portfolio_contribution          │
 │  ◄── Activity feedback triggers re-run           │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  Agent 5: Activity Reviewer (per lesson)         │
+│  (fast model)                                    │
+│  Reviews activity against mastery criteria        │
+│  Checks rubric alignment, difficulty calibration  │
+│  Output: approved/revision_needed, suggestions    │
+│  ◄── Loops back to Activity Creator if needed    │
+└─────────────────────┬───────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────┐
+│  Agent 6: Assessment Creator (per course)        │
+│  (default model)                                  │
+│  Summative assessment across ALL objectives       │
+│  Portfolio-based: "finalize your work product"    │
+│  Gamification: course mastery score, completion   │
+│  Output: assessment with portfolio rubric         │
+│  ◄── Assessment feedback triggers re-run         │
 └─────────────────────┬───────────────────────────┘
                       │
                       ▼
@@ -135,29 +162,32 @@ Admin Input (title, description, objectives)
 │  Taxonomies: course + lesson_group                │
 │                                                   │
 │  Course: "Web Accessibility Fundamentals"         │
+│  Work Product: "Accessibility Audit Report"       │
 │    ├── Lesson Group: "Seeing the Barriers"        │
-│    │   ├── Lesson 1a + Activity (draft)           │
-│    │   └── Lesson 1b + Activity (draft)           │
+│    │   ├── Lesson 1a [explore] + Activity (draft) │
+│    │   └── Lesson 1b [apply] + Activity (draft)   │
 │    ├── Lesson Group: "Auditing with Browser Tools"│
-│    │   └── Lesson 2 + Activity (draft)            │
-│    └── Lesson Group: "Writing Fix Recommendations"│
-│        └── Lesson 3 + Activity (draft)            │
+│    │   └── Lesson 2 [create] + Activity (draft)   │
+│    ├── Lesson Group: "Writing Fix Recommendations"│
+│    │   └── Lesson 3 [create] + Activity (draft)   │
+│    └── Final Assessment [final] (draft)           │
+│        "Finalize your Accessibility Audit Report" │
 │                                                   │
 │  Admin provides FEEDBACK → triggers regeneration  │
 │  Admin CANNOT directly edit post content          │
 └───────────────────────────────────────────────────┘
 ```
 
-### 4.2 Why Four Agents Instead of Two
+### 4.2 Why Six Agents
 
-The original PRD used two agents (plan + write). After studying the 1111 School pipeline, four agents produce significantly better content because:
+The original PRD used two agents (plan + write). After studying the 1111 School pipeline (seven agents) and the 1111 Learn extension (four agents with assessment), six agents is the right number for WordPress:
 
-1. **Course Describer** ensures narrative coherence — lesson titles feel like chapters in the same story, not isolated topics. Without this, each lesson is planned in isolation and the course lacks an arc.
-2. **Lesson Planner** uses backward design — defining mastery criteria first, then designing the activity, then planning the lesson content. This ensures the lesson teaches exactly what the learner needs to succeed at the activity.
+1. **Course Describer** ensures narrative coherence — lesson titles feel like chapters in the same story, not isolated topics. Also defines the course **work product** (the portfolio artifact learners build across all activities).
+2. **Lesson Planner** uses backward design — defining mastery criteria first, then designing the activity, then planning the lesson content. Assigns **activity types** (`explore` → `apply` → `create`) following the learn-extension's progression model.
 3. **Lesson Writer** focuses solely on writing engaging content from a detailed plan, rather than simultaneously planning and writing.
-4. **Activity Creator** designs activities anchored to specific mastery criteria, not generic "practice what you learned" exercises.
-
-The incremental cost is minimal (3 fast-model calls + 1 default-model call per objective vs. 2 calls), but the quality improvement is substantial.
+4. **Activity Creator** designs activities as **portfolio contributions** anchored to specific mastery criteria, with gamification mechanics (XP, milestones). Each activity adds to the single work product.
+5. **Activity Reviewer** (from School) quality-checks each activity against mastery criteria and rubric alignment before it reaches the admin. This automated review step catches misalignment that would otherwise require admin feedback.
+6. **Assessment Creator** (from School) produces a summative, portfolio-based final assessment that spans all objectives — "finalize and present your work product." This closes the backward design loop: the assessment is the ultimate evidence of mastery.
 
 ### 4.3 Agent Design Principles (from 1111 School)
 
@@ -167,6 +197,9 @@ These principles are proven in production and must carry forward:
 - **Narrative threading:** The Course Describer identifies the PRIMARY objective and shows how others support it. Every lesson title and summary feels like a chapter in the same story.
 - **Scope control:** Each lesson covers ONLY its assigned objective. The planner receives the full objective list but is explicitly told not to teach other objectives. This prevents scope creep and repetition.
 - **Agents are functions, not frameworks:** Each agent takes typed input, returns typed output, validates against a schema, and retries on failure. No memory across invocations, no autonomous decisions.
+- **Portfolio-first design (from Learn extension):** Every activity contributes to a single, persistent work product — the learner's portfolio artifact for the course. Activities don't exist in isolation; they build on each other. The final assessment is "finalize and present your work product." This follows the learn-extension's "Single Document Rule" — one work product per course, created in the first activity, refined through every subsequent one.
+- **Activity type progression (from Learn extension):** Activities follow a four-type progression: `explore` (research and discover) → `apply` (practice a skill) → `create` (build and refine) → `final` (polish and deliver). This progression mirrors the learn-extension's activity types and ensures learners move from understanding to mastery to demonstration.
+- **Gamification through mastery, not gimmicks:** XP values, mastery scores, achievement milestones, and streaks are designed to reflect genuine learning progress. An `explore` activity earns less XP than a `create` activity because it requires less synthesis. Milestones mark real accomplishments ("First draft complete," "All objectives covered"). This is gamification in service of pedagogy, not engagement hacking.
 - **Prompts are data, not code:** System prompts live in Markdown files. Dynamic context (course data, objectives) goes in the user message. Changing agent behavior never requires touching PHP — an AI agent can propose prompt improvements as a PR diff against `prompts/*.md`.
 - **Built to be improved by agents:** Every design choice — Markdown prompt files, structured JSON output, deterministic validation with specific error messages, telemetry that captures failure patterns — exists so that an AI agent can diagnose what's wrong and propose a fix. The plugin is not just *used* by AI agents; it's *maintained* by them through the telemetry → PR pipeline (Section 15).
 
@@ -254,6 +287,9 @@ Learning objectives (3 total — produce one lesson entry for each):
 ```json
 {
   "narrative_description": "You'll start by learning to see the web through the eyes of users who face accessibility barriers every day — visual, motor, cognitive, and more. With that foundation, you'll pick up the browser tools that reveal these barriers in any webpage's code. By the end, you'll be writing specific, prioritized fix recommendations that developers can act on immediately.",
+  "work_product": "Accessibility Audit Report",
+  "work_product_tool": "Google Doc",
+  "work_product_description": "A professional accessibility audit report for a real website, built piece by piece across every lesson — documenting barriers found, audit methodology, and prioritized fix recommendations. This is a portfolio piece you can share with employers or clients.",
   "lessons": [
     {
       "lesson_title": "Seeing the Barriers",
@@ -271,13 +307,14 @@ Learning objectives (3 total — produce one lesson entry for each):
 }
 ```
 
-**Key prompt rules (from 1111 School's course_describer):**
+**Key prompt rules (from 1111 School's course_describer + Learn extension's work product model):**
 - `narrative_description` must identify the PRIMARY objective and show how others support it
 - Give the learner a clear arc: where they start, what they build, where they end up
 - Written in second person (you/your), energetic and specific
 - One lesson entry per objective, in the same order — never merge, skip, or reorder
 - Lesson titles must feel like chapters in the same story (foundation → application → mastery)
 - Lesson summaries describe what the learner will be able to DO, not what the lesson covers
+- **Work product (from Learn extension):** Define a single, concrete portfolio artifact that the learner builds across the entire course. `work_product` is a short name (2–4 words), `work_product_tool` is the tool (browser-based: Google Doc, Notion, CodePen, Replit, etc.), `work_product_description` is 2–3 sentences framing it as a portfolio piece the learner owns and can show to others. The work product must be achievable given the objectives — not aspirational.
 
 ### 5.2 Agent 2: Lesson Planner
 
@@ -293,11 +330,15 @@ Learning objectives (3 total — produce one lesson entry for each):
 ```
 Course description: You'll start by learning to see the web through the eyes of users who face accessibility barriers...
 
+Work product: Accessibility Audit Report (Google Doc)
+
 Learning objective for THIS lesson group: Identify common accessibility barriers on web pages
 
 Lesson title from Course Describer: Seeing the Barriers
 
 Target lesson count: 2
+
+This is objective 1 of 3. Assign activity types accordingly (early = explore/apply, later = create).
 
 Other objectives in this course (DO NOT teach these, they have their own lessons):
 - Use browser developer tools to run basic accessibility audits
@@ -382,7 +423,8 @@ Admin feedback on previous plan (if any): Split the visual barriers into their o
 - **Scope control:** Cover ONLY the assigned objective. May briefly mention related topics for context but must NOT teach concepts belonging to other objectives.
 - **Lesson splitting:** When `lesson_count` > 1, split the objective's content across lessons in a logical progression. Each lesson should build toward mastery, not stand alone. The last lesson in the group should connect all prior lessons to the mastery criteria.
 - Mastery criteria must be specific and measurable — rubric-style checks a reviewer could use.
-- Activity seed must directly exercise the mastery criteria, not just recall facts.
+- **Activity type assignment (from Learn extension):** Each lesson's `suggested_activity` must have an `activity_type` from the progression: `explore` → `apply` → `create`. Early lessons in a course should be `explore` (research and discover), middle lessons `apply` (practice a skill), later lessons `create` (build and refine). The planner assigns types based on position in the course and the nature of the objective. The `final` type is reserved for the Assessment Creator (Agent 6).
+- Activity seed must directly exercise the mastery criteria, not just recall facts. The seed must reference the work product by name.
 - Lesson outlines must collectively close the gap: after completing all lessons, a learner could plausibly meet every mastery criterion.
 - The first lesson title uses the preset title from Course Describer. Additional lessons get planner-generated titles that read as continuations (e.g., "Part 2: Beyond What You Can See").
 - **Feedback integration:** When admin feedback is provided, incorporate it into the new plan. The feedback may request structural changes (split/merge lessons), content emphasis changes, or scope adjustments.
@@ -442,7 +484,7 @@ Admin feedback on previous version (if any): Add more concrete examples of contr
 
 ### 5.4 Agent 4: Activity Creator
 
-**Purpose:** Given the activity seed and mastery criteria from the lesson plan, create a complete practice activity with instructions, rubric, and hints.
+**Purpose:** Given the activity seed, mastery criteria, activity type, and work product context from the lesson plan, create a complete practice activity that contributes to the learner's portfolio work product. Includes gamification metadata (XP value, milestone, portfolio contribution description).
 
 **Model:** Fast model (`claude-haiku-4-5-20251001`)
 **Max tokens:** 1024
@@ -451,6 +493,13 @@ Admin feedback on previous version (if any): Add more concrete examples of contr
 **Input (user message):**
 ```
 Learning objective: Identify common accessibility barriers on web pages
+
+Activity type: explore
+
+Work product: Accessibility Audit Report
+Work product tool: Google Doc
+
+Course position: Lesson 1 of 4 (first activity in the course)
 
 Mastery criteria:
 - Names at least five distinct accessibility barriers with correct categorization
@@ -467,32 +516,189 @@ Admin feedback on previous activity (if any): The rubric criteria are too vague 
 **Expected output (JSON):**
 ```json
 {
-  "activity_type": "short_answer",
-  "prompt": "Pick any popular website you use regularly. Explore it with accessibility in mind and identify at least five barriers you can find across different categories.",
-  "instructions": "For each barrier, name it, categorize it (visual, motor, cognitive, or auditory), and explain in 1-2 sentences how it affects a real user. Aim for 200-400 words total.",
+  "activity_type": "explore",
+  "prompt": "Research common types of web accessibility barriers and start your Accessibility Audit Report.",
+  "instructions": "Create a new Google Doc called 'Accessibility Audit Report'. Search the web for common accessibility barriers that affect real users. Write about what you found in your own words — what surprised you or stood out.",
   "scoring_rubric": [
+    "Document is created with a clear title",
     "Identifies at least five distinct accessibility barriers",
-    "Correctly categorizes each barrier into the right category",
-    "Explains real user impact for each barrier (not just rule violations)",
-    "Covers at least three different barrier categories",
-    "Uses specific, concrete examples from the chosen website"
+    "Correctly categorizes barriers into visual, motor, cognitive, or auditory",
+    "Explains real user impact in the learner's own words (not copied)",
+    "Covers at least three different barrier categories"
   ],
   "hints": [
-    "Try navigating the website using only your keyboard — can you reach everything?",
+    "Try navigating a website using only your keyboard — what do you notice?",
     "Look at images: do they have alt text you can check in the browser?",
-    "Check text contrast: can you read everything easily, especially in smaller sizes?",
-    "Look for content that only works on hover or requires precise mouse movements"
+    "Check text contrast: can you read everything easily, especially in smaller sizes?"
+  ],
+  "portfolio_contribution": "Creates the Accessibility Audit Report and documents initial barrier research — the foundation for all subsequent work.",
+  "xp_value": 100,
+  "milestone": "Portfolio Started"
+}
+```
+
+**Key prompt rules (adapted from 1111 School + Learn extension):**
+- **Portfolio-first:** Every activity adds to the work product. The first activity creates it; subsequent activities return to it. Never create throwaway exercises — the learner is always building something they'll keep.
+- **Activity type determines tone:** `explore` = research and discover; `apply` = practice a skill; `create` = build or refine; `final` = polish and deliver. Follow the learn-extension's activity type definitions.
+- **Guide, don't dictate (from Learn extension):** Tell the learner WHAT to learn and WHERE to put it — never tell them WHAT to write or HOW to structure it. No prescribed headings, templates, or bullet points to copy.
+- `prompt`: Core task question (1–2 sentences, min 20 chars). References the work product by name.
+- `instructions`: Format and constraint guidance ONLY (1–2 sentences, min 50 chars). Do NOT restate the prompt.
+- `scoring_rubric`: 3–6 specific, checkable criteria that map to the mastery criteria.
+- `hints`: 2–5 scaffolding hints that guide without giving the answer.
+- `portfolio_contribution`: 1–2 sentences describing what this activity adds to the work product. Used in portfolio progress displays.
+- `xp_value`: Integer XP reward (100 for `explore`, 150 for `apply`, 200 for `create`, 300 for `final`). Reflects the synthesis required.
+- `milestone`: Optional achievement label (null if none). Examples: "Portfolio Started", "First Draft Complete", "All Objectives Covered", "Portfolio Delivered".
+- Activity must directly test the learning objective — challenging but achievable.
+- Anchor in real-world application, not hypothetical scenarios.
+
+### 5.5 Agent 5: Activity Reviewer
+
+**Purpose:** Given the generated activity and the lesson plan's mastery criteria, review the activity for quality — checking that the rubric aligns with mastery criteria, that the difficulty is appropriate, that the activity actually contributes to the work product, and that gamification values are calibrated correctly. This is an automated quality gate that catches problems before they reach the admin.
+
+**Model:** Fast model (`claude-haiku-4-5-20251001`)
+**Max tokens:** 1024
+**Prompt file:** `prompts/activity-reviewer.md`
+
+**Input (user message):**
+```
+Learning objective: Identify common accessibility barriers on web pages
+
+Activity type: explore
+
+Work product: Accessibility Audit Report
+
+Mastery criteria:
+- Names at least five distinct accessibility barriers with correct categorization
+- Explains how each barrier affects real users
+- Identifies barriers from at least three different categories
+- Uses specific examples rather than generic descriptions
+
+Generated activity:
+{full activity JSON from Activity Creator}
+```
+
+**Expected output (JSON):**
+```json
+{
+  "verdict": "approved",
+  "rubric_alignment": "All 5 rubric criteria map directly to mastery criteria. No gaps.",
+  "difficulty_assessment": "Appropriate for an explore activity — research-based, no prior knowledge assumed.",
+  "portfolio_check": "Activity creates the work product document and begins substantive content. Not just scaffolding.",
+  "gamification_check": "XP value of 100 matches explore type. 'Portfolio Started' milestone is appropriate for first activity.",
+  "suggestions": []
+}
+```
+
+**On revision_needed:**
+```json
+{
+  "verdict": "revision_needed",
+  "rubric_alignment": "Rubric criterion 3 ('covers three categories') is not reflected in the activity instructions — learner might only cover one category.",
+  "difficulty_assessment": "Instructions assume the learner already knows WCAG categories — too advanced for an explore activity.",
+  "portfolio_check": "Activity asks learner to 'list barriers' but doesn't connect this to the Audit Report document.",
+  "gamification_check": "XP value of 200 is too high for an explore activity (expected 100).",
+  "suggestions": [
+    "Add instruction to organize findings by barrier category in the document",
+    "Remove assumption about WCAG — let the learner discover categories through research",
+    "Reference the Accessibility Audit Report by name in the prompt",
+    "Reduce XP to 100 for explore type"
   ]
 }
 ```
 
-**Key prompt rules (from 1111 School's activity_creator):**
-- `prompt`: Core task question (1–2 sentences, min 20 chars). What the learner reads first — clear and direct.
-- `instructions`: Format and constraint guidance ONLY (1–2 sentences, min 50 chars). Do NOT restate the prompt.
-- `scoring_rubric`: 3–6 specific, checkable criteria that map to the mastery criteria.
-- `hints`: 2–5 scaffolding hints that guide without giving the answer.
-- Activity must directly test the learning objective — challenging but achievable.
-- Anchor in real-world application, not hypothetical scenarios.
+**Key prompt rules:**
+- The reviewer is a quality gate, not a rewriter. It approves or sends back with specific suggestions.
+- If `verdict` is `revision_needed`, the orchestrator sends the suggestions back to the Activity Creator as feedback for a new attempt. Maximum 1 revision loop (matching the retry-once pattern).
+- Review criteria: rubric-mastery alignment, difficulty calibration for the activity type, work product contribution, gamification value accuracy.
+- Never approve an activity that doesn't reference the work product by name.
+
+### 5.6 Agent 6: Assessment Creator
+
+**Purpose:** After all lessons and activities are generated for a course, produce a summative assessment that spans all learning objectives. The assessment is **portfolio-based** — it asks the learner to finalize, present, and defend their work product. This is always the `final` activity type.
+
+**Model:** Default model (`claude-sonnet-4-6` — needs nuanced rubric design across multiple objectives)
+**Max tokens:** 4096
+**Prompt file:** `prompts/assessment-creator.md`
+
+**Input (user message):**
+```
+Course title: Web Accessibility Fundamentals
+
+Course description: You'll start by learning to see the web through the eyes of users who face accessibility barriers...
+
+Work product: Accessibility Audit Report
+Work product tool: Google Doc
+
+Learning objectives (all):
+1. Identify common accessibility barriers on web pages
+2. Use browser developer tools to run basic accessibility audits
+3. Propose concrete fixes for the accessibility issues you find
+
+Mastery criteria (all, by objective):
+Objective 1: [...]
+Objective 2: [...]
+Objective 3: [...]
+
+Activities completed before this assessment:
+[summary of all generated activities and their portfolio contributions]
+
+Admin feedback on previous assessment (if any): The rubric doesn't test objective 2 well enough.
+```
+
+**Expected output (JSON):**
+```json
+{
+  "assessment_title": "Finalize Your Accessibility Audit Report",
+  "assessment_type": "final",
+  "prompt": "Your Accessibility Audit Report has grown across every lesson in this course. Now it's time to finalize it. Review your entire document, fill any gaps, and make sure it demonstrates everything you've learned.",
+  "instructions": "Open your Accessibility Audit Report. Review it from start to finish. Make sure it covers all three areas: identifying barriers, audit methodology, and fix recommendations. Polish your writing and ensure every section shows your own understanding — not copied text.",
+  "portfolio_rubric": [
+    {
+      "objective": "Identify common accessibility barriers on web pages",
+      "criteria": [
+        "Report documents at least five distinct barriers with correct categorization",
+        "Each barrier includes a real-user impact explanation in the learner's own words",
+        "At least three barrier categories (visual, motor, cognitive, auditory) are represented"
+      ]
+    },
+    {
+      "objective": "Use browser developer tools to run basic accessibility audits",
+      "criteria": [
+        "Report includes evidence of using at least one browser audit tool",
+        "Audit findings are documented with specific elements and issues found",
+        "Methodology section explains the audit process step by step"
+      ]
+    },
+    {
+      "objective": "Propose concrete fixes for the accessibility issues you find",
+      "criteria": [
+        "At least three specific, actionable fix recommendations are provided",
+        "Recommendations are prioritized by impact or severity",
+        "Each recommendation references a specific issue documented earlier in the report"
+      ]
+    }
+  ],
+  "scoring_guide": {
+    "mastery": "Meets all criteria across all objectives — the report is complete, specific, and demonstrates genuine understanding. Score: 0.85–1.0",
+    "proficient": "Meets most criteria with minor gaps — the report covers all objectives but some areas lack depth or specificity. Score: 0.70–0.84",
+    "developing": "Meets some criteria — significant gaps in one or more objectives, or content is too generic/copied. Score: 0.50–0.69",
+    "beginning": "Major gaps across multiple objectives — the report is incomplete or doesn't demonstrate understanding. Score: 0.0–0.49"
+  },
+  "xp_value": 500,
+  "milestone": "Portfolio Delivered",
+  "completion_message": "You've completed your Accessibility Audit Report — a real portfolio piece that demonstrates your ability to identify, audit, and fix web accessibility issues. This is work you can share with employers, clients, or teammates."
+}
+```
+
+**Key prompt rules:**
+- The assessment is always type `final` — the last step in the course.
+- It must be **portfolio-based**: the learner finalizes and presents their work product, not a separate quiz or test.
+- `portfolio_rubric` is organized by objective with specific criteria for each. Every learning objective must be represented.
+- The rubric evaluates the **work product itself** — what the learner built across the entire course — not isolated knowledge recall.
+- `scoring_guide` maps score ranges to mastery levels (following learn-extension's 0.0–1.0 scale with recommendation thresholds: advance ≥ 0.7, continue ≥ 0.5, revise < 0.5).
+- `completion_message` reinforces that this is a portfolio piece the learner owns and can use. This is critical for the "building portfolio items" goal.
+- `xp_value` for the final assessment is always 500 (the highest single reward, reflecting the synthesis required).
+- The assessment must be completable — it asks the learner to finalize existing work, not produce something entirely new.
 
 ---
 
@@ -504,13 +710,15 @@ All agent output passes through deterministic validators before reaching WordPre
 
 **Course Describer output:**
 - `narrative_description` is a non-empty string (min 100 chars)
+- `work_product` is a non-empty string (2–60 chars) — the portfolio artifact name
+- `work_product_tool` is a non-empty string — the tool used (e.g., "Google Doc", "CodePen")
 - `lessons` is an array with exactly one entry per objective
 - Each lesson has `lesson_title` (5–60 chars) and `lesson_summary` (min 30 chars)
 
 **Lesson Plan output:**
-- Has `lesson_title`, `learning_objective`, `key_concepts` (2–8 items), `mastery_criteria` (2–6 items)
-- `suggested_activity` has `activity_type`, `prompt`, `expected_evidence` (2–5 items)
-- `lesson_outline` has 3–10 items
+- Has `learning_objective`, `key_concepts` (2–8 items), `mastery_criteria` (2–6 items)
+- `suggested_activity` has `activity_type` (one of: `explore`, `apply`, `create`), `prompt`, `expected_evidence` (2–5 items)
+- `lessons` array with 1–4 entries, each having `lesson_title` and `lesson_outline` (3–10 items)
 - No unsafe content patterns
 
 **Lesson Content output:**
@@ -518,9 +726,28 @@ All agent output passes through deterministic validators before reaching WordPre
 - No unsafe content patterns
 
 **Activity output:**
+- Has `activity_type` (one of: `explore`, `apply`, `create`, `final`)
 - Has `prompt` (min 20 chars), `instructions` (min 50 chars)
 - `scoring_rubric` has 3–6 items
 - `hints` has 2–5 items
+- `portfolio_contribution` is a non-empty string (min 20 chars)
+- `xp_value` is an integer: 100 (`explore`), 150 (`apply`), 200 (`create`), or 300 (`final` on per-lesson activities)
+- `milestone` is null or a non-empty string
+- No unsafe content patterns
+
+**Activity Review output:**
+- Has `verdict` (one of: `approved`, `revision_needed`)
+- Has `rubric_alignment`, `difficulty_assessment`, `portfolio_check`, `gamification_check` (all non-empty strings)
+- `suggestions` is an array (empty if approved, 1–5 items if revision_needed)
+
+**Assessment output:**
+- Has `assessment_title` (5–100 chars), `assessment_type` (must be `final`)
+- Has `prompt` (min 20 chars), `instructions` (min 50 chars)
+- `portfolio_rubric` is an array with one entry per objective, each having `objective` (string) and `criteria` (2–6 items)
+- `scoring_guide` has `mastery`, `proficient`, `developing`, `beginning` (all non-empty strings)
+- `xp_value` is 500
+- `milestone` must be "Portfolio Delivered"
+- `completion_message` is a non-empty string (min 50 chars) — must reference the work product as a portfolio piece
 - No unsafe content patterns
 
 ### 6.2 Retry Strategy
@@ -575,10 +802,12 @@ learned-wp-creator/
 │       └── generating.php          Generation progress template (partial)
 │
 ├── prompts/
-│   ├── course-describer.md         System prompt — narrative arc + lesson titles
-│   ├── lesson-planner.md           System prompt — backward design lesson plan
+│   ├── course-describer.md         System prompt — narrative arc + lesson titles + work product
+│   ├── lesson-planner.md           System prompt — backward design lesson plan + activity types
 │   ├── lesson-writer.md            System prompt — full lesson content
-│   └── activity-creator.md         System prompt — practice activity design
+│   ├── activity-creator.md         System prompt — portfolio activity + gamification
+│   ├── activity-reviewer.md        System prompt — quality gate for activities
+│   └── assessment-creator.md       System prompt — summative portfolio assessment
 │
 └── assets/
     └── icon.svg                    Plugin icon / branding
@@ -648,14 +877,15 @@ Generated content is **immutable by human users** — only the 1111 Agent user (
 
 #### 8.4.1 Feedback Levels
 
-Feedback can be provided at four levels, each triggering regeneration of different scope:
+Feedback can be provided at five levels, each triggering regeneration of different scope:
 
 | Level | Where feedback is given | What gets regenerated | Agents re-run |
 |-------|------------------------|----------------------|----------------|
-| **Course description** | Course taxonomy term edit screen | Entire course — new narrative, new lesson plans, new lessons, new activities | All four agents |
-| **Lesson plan** | Lesson group (`lesson_group`) tag edit screen | All lessons in that group + their activities | Lesson Planner → Lesson Writer → Activity Creator |
+| **Course description** | Course taxonomy term edit screen | Entire course — new narrative, new plans, new lessons, new activities, new assessment | All six agents |
+| **Lesson plan** | Lesson group (`lesson_group`) tag edit screen | All lessons in that group + their activities | Lesson Planner → Lesson Writer → Activity Creator → Activity Reviewer |
 | **Written lesson** | Post editor — block editor sidebar panel | That lesson only (re-written from existing plan) | Lesson Writer only |
-| **Activity** | Post editor — custom meta box below content | That lesson's activity only (re-created from existing plan) | Activity Creator only |
+| **Activity** | Post editor — custom meta box below content | That lesson's activity only (re-created from existing plan) | Activity Creator → Activity Reviewer |
+| **Assessment** | Assessment post editor — block editor sidebar panel | The final assessment only | Assessment Creator only |
 
 #### 8.4.2 Feedback UI: Course Description (Taxonomy Term Editor)
 
@@ -693,12 +923,29 @@ When viewing a `learn` post in the block editor, a **sidebar panel** (registered
 
 Below the block editor content area, a **custom meta box** displays:
 
+- **Activity type badge:** Color-coded label showing the activity type (`explore` / `apply` / `create`)
 - **Read-only rendered view** of the current activity (prompt, instructions, rubric, hints)
+- **Portfolio contribution:** How this activity adds to the work product
+- **Gamification details:** XP value, milestone (if any)
+- **Activity Reviewer verdict:** Shows whether the activity was `approved` or required revision, with the reviewer's alignment assessment
 - **Feedback textarea:** "What should change about this activity?"
-- **Regenerate Activity button:** Submits feedback, re-runs the Activity Creator with the existing mastery criteria and activity seed plus feedback, and updates the activity meta
+- **Regenerate Activity button:** Submits feedback, re-runs the Activity Creator → Activity Reviewer with the existing mastery criteria and activity seed plus feedback, and updates the activity meta
 - **Version indicator:** Shows current activity generation version number
 
-#### 8.4.6 Regeneration Pipeline
+#### 8.4.6 Feedback UI: Assessment (Assessment Post Editor)
+
+The final assessment is stored as a separate `learn` post (with `_1111_activity_type` = `final`) and has its own feedback UI in the block editor:
+
+- **Block editor sidebar panel** (same pattern as lesson feedback) with:
+  - **Read-only rendered view** of the assessment: title, prompt, instructions, portfolio rubric (organized by objective), scoring guide
+  - **Gamification summary:** Total course XP, milestone progression, completion message
+  - **Feedback textarea:** "What should change about this assessment?"
+  - **Regenerate Assessment button:** Re-runs the Assessment Creator with all course context plus feedback
+  - **Version indicator**
+
+The admin can also see the assessment from the **Course taxonomy term edit screen**, which shows a summary of the assessment alongside the course narrative.
+
+#### 8.4.7 Regeneration Pipeline
 
 When feedback is submitted at any level:
 
@@ -714,10 +961,11 @@ When feedback is submitted at any level:
 
 When feedback triggers regeneration at a higher level, all downstream content is regenerated:
 
-- **Course description feedback** → Course Describer → (for each objective) Lesson Planner → (for each lesson) Lesson Writer → Activity Creator
-- **Lesson plan feedback** → Lesson Planner → (for each lesson in group) Lesson Writer → Activity Creator
+- **Course description feedback** → Course Describer → (for each objective) Lesson Planner → (for each lesson) Lesson Writer → Activity Creator → Activity Reviewer → Assessment Creator
+- **Lesson plan feedback** → Lesson Planner → (for each lesson in group) Lesson Writer → Activity Creator → Activity Reviewer
 - **Lesson feedback** → Lesson Writer (single lesson)
-- **Activity feedback** → Activity Creator (single activity)
+- **Activity feedback** → Activity Creator → Activity Reviewer (single activity)
+- **Assessment feedback** → Assessment Creator (single assessment)
 
 The progress stepper UI (Section 8.2) is reused for cascading regeneration, showing which agents are currently running and which lessons are being updated.
 
@@ -745,6 +993,13 @@ For `learn` posts authored by the 1111 Agent user, the block editor content area
 | `_1111_course_description` | `string` | Original course description |
 | `_1111_narrative_description` | `string` | AI-generated narrative arc from Course Describer |
 | `_1111_lesson_titles` | `array` | Pre-set `[{lesson_title, lesson_summary}]` from Course Describer |
+| `_1111_work_product` | `string` | Portfolio artifact name (e.g., "Accessibility Audit Report") |
+| `_1111_work_product_tool` | `string` | Tool for work product (e.g., "Google Doc") |
+| `_1111_work_product_description` | `string` | 2–3 sentence description framing portfolio value |
+| `_1111_assessment` | `array` | Full assessment spec from Assessment Creator (Agent 6) |
+| `_1111_assessment_post_id` | `int` | Post ID of the assessment post |
+| `_1111_assessment_feedback` | `string` | Admin's feedback on the assessment (cleared after regeneration) |
+| `_1111_total_xp` | `int` | Total XP available across all activities + assessment |
 | `_1111_generation_date` | `string` | ISO 8601 timestamp of generation |
 | `_1111_generation_status` | `string` | `generating`, `complete`, `failed` |
 | `_1111_course_feedback` | `string` | Admin's feedback on the course description (cleared after regeneration) |
@@ -760,7 +1015,12 @@ For `learn` posts authored by the 1111 Agent user, the block editor content area
 | `_1111_key_concepts` | `array` | Key concepts from lesson plan |
 | `_1111_mastery_criteria` | `array` | Mastery criteria from lesson plan |
 | `_1111_key_takeaways` | `array` | Key takeaways from lesson writer |
-| `_1111_activity` | `array` | Activity spec: `{activity_type, prompt, instructions, scoring_rubric, hints}` |
+| `_1111_activity` | `array` | Activity spec: `{activity_type, prompt, instructions, scoring_rubric, hints, portfolio_contribution, xp_value, milestone}` |
+| `_1111_activity_type` | `string` | One of: `explore`, `apply`, `create`, `final` |
+| `_1111_activity_review` | `array` | Activity Reviewer output: `{verdict, rubric_alignment, suggestions}` |
+| `_1111_xp_value` | `int` | XP reward for this lesson's activity |
+| `_1111_milestone` | `string|null` | Achievement milestone label (if any) |
+| `_1111_portfolio_contribution` | `string` | How this activity adds to the work product |
 | `_1111_generated` | `bool` | `true` if AI-generated |
 | `_1111_lesson_feedback` | `string` | Admin's feedback on the written lesson (cleared after regeneration) |
 | `_1111_lesson_version` | `int` | Incremented on each lesson-level regeneration |
@@ -837,31 +1097,44 @@ The pipeline follows 1111 School's generation service design: each step commits 
 **AJAX Endpoint:** `1111_generate_course`
 
 ```
-Request → Validate → Create Course Term → Phase 0 → Per-Objective Loop → Complete
+Request → Validate → Create Course Term → Phase 0 → Per-Objective Loop → Phase Final → Complete
 ```
 
 ### 11.2 Phase 0: Course Description
 
 1. Call Course Describer agent with title, description, objectives
-2. Validate output (narrative_description + lessons array)
-3. Store `_1111_narrative_description` and `_1111_lesson_titles` on the course term
-4. Send progress update: lesson titles now visible in the stepper UI
+2. Validate output (narrative_description + work_product + lessons array)
+3. Store `_1111_narrative_description`, `_1111_lesson_titles`, `_1111_work_product`, `_1111_work_product_tool`, `_1111_work_product_description` on the course term
+4. Send progress update: lesson titles and work product now visible in the stepper UI
 
 ### 11.3 Per-Objective Loop (Phase 1+)
 
 For each objective (index 0 to N-1):
 
 1. **Check for existing content** — if lesson group already has content (retry scenario), skip
-2. **Lesson Planner** — call with objective, narrative description, all objectives (for scope control), preset title from Phase 0, target lesson count, and any admin feedback
+2. **Lesson Planner** — call with objective, narrative description, all objectives (for scope control), preset title from Phase 0, target lesson count, work product context, and any admin feedback
 3. Validate plan output. Retry once on failure.
 4. **Create `lesson_group` tag** — store the full lesson plan on the tag's term meta
 5. **For each lesson in the plan** (1 to lesson_count):
    a. **Lesson Writer** — call with the specific lesson outline, mastery criteria, and course description
    b. Validate content output. Retry once on failure.
-   c. **Activity Creator** — call with activity seed, objective, and mastery criteria from the plan
+   c. **Activity Creator** — call with activity seed, objective, mastery criteria, activity type, work product context, and course position from the plan
    d. Validate activity output. Retry once on failure.
-   e. **Create WordPress post** — `learn` CPT, authored by 1111 Agent user, assigned to `course` taxonomy term and `lesson_group` tag, with all meta
-   f. **Commit and report progress** — save post, update stepper
+   e. **Activity Reviewer** — call with the generated activity, mastery criteria, and work product context
+   f. Validate review output. If `revision_needed`, send suggestions back to Activity Creator for one revision attempt.
+   g. **Create WordPress post** — `learn` CPT, authored by 1111 Agent user, assigned to `course` taxonomy term and `lesson_group` tag, with all meta (including activity, gamification, portfolio data)
+   h. **Commit and report progress** — save post, update stepper
+
+### 11.4 Phase Final: Assessment
+
+After all objectives have been processed:
+
+1. **Assessment Creator** — call with course title, narrative description, work product, all objectives, all mastery criteria, summary of all generated activities and their portfolio contributions, and any admin feedback
+2. Validate assessment output. Retry once on failure.
+3. **Create assessment post** — `learn` CPT with `_1111_activity_type` = `final`, authored by 1111 Agent user, assigned to the course taxonomy term
+4. Store assessment spec in post meta and `_1111_assessment` on the course term
+5. Calculate `_1111_total_xp` for the course (sum of all activity XP + assessment XP) and store on course term
+6. Send progress update: "Assessment created — course generation complete"
 
 ### 11.4 Post Creation
 
@@ -939,10 +1212,12 @@ Progress is reported via **polling** (WordPress hosting compatible):
 
 | File | Agent | Model | Purpose |
 |------|-------|-------|---------|
-| `prompts/course-describer.md` | Course Describer | fast | Narrative arc + lesson titles/summaries |
-| `prompts/lesson-planner.md` | Lesson Planner | fast | Backward design lesson plan |
+| `prompts/course-describer.md` | Course Describer | fast | Narrative arc + lesson titles + work product definition |
+| `prompts/lesson-planner.md` | Lesson Planner | fast | Backward design lesson plan + activity type assignment |
 | `prompts/lesson-writer.md` | Lesson Writer | default | Full lesson content from plan |
-| `prompts/activity-creator.md` | Activity Creator | fast | Practice activity from activity seed |
+| `prompts/activity-creator.md` | Activity Creator | fast | Portfolio activity + gamification from activity seed |
+| `prompts/activity-reviewer.md` | Activity Reviewer | fast | Quality gate: rubric alignment, difficulty, portfolio check |
+| `prompts/assessment-creator.md` | Assessment Creator | default | Summative portfolio assessment across all objectives |
 
 ### 12.3 Prompt File Structure
 
@@ -1178,16 +1453,16 @@ This mirrors [Rule #10 from the extension's CLAUDE.md](https://github.com/1111ph
 
 ## 16. Non-Goals (Explicitly Out of Scope)
 
-> **Note:** Telemetry is no longer a non-goal — see Section 15.
+> **Note:** Telemetry and assessments are no longer non-goals — see Sections 5.5–5.6 and 15.
 
 These are intentionally excluded from 1111 Learn Creator:
 
-1. **Assessments / activity grading** — No quizzes, scoring, or AI-powered review of learner submissions. Activities are generated as reference content for the admin; grading belongs to 1111 Learn Administrator.
-2. **Learner profiles** — No tracking of individual learner progress, preferences, or personalization.
-3. **Progress tracking** — No completion tracking or status indicators for learners.
-4. **Frontend interactivity** — No JS-driven learner interactions. The plugin produces standard WordPress posts.
+1. **Learner-submitted assessment grading** — The plugin generates assessment rubrics and scoring guides, but does not evaluate actual learner submissions. AI-powered grading of real learner work belongs to 1111 Learn Administrator.
+2. **Learner profiles** — No tracking of individual learner progress, preferences, or personalization. (The gamification metadata — XP values, milestones — is generated as content for the admin/learner to see, but the plugin does not track earned XP or completed milestones per learner.)
+3. **Progress tracking** — No completion tracking or status indicators for learners. (Portfolio contribution descriptions show what each activity adds to the work product, but the plugin does not track whether a learner has actually done it.)
+4. **Frontend interactivity** — No JS-driven learner interactions. The plugin produces standard WordPress posts. Gamification data (XP, milestones) is stored as post meta for display in templates or companion plugins.
 5. **Enrollment / access restrictions** — No learner enrollment or content gating. (The plugin does create one custom role — `1111_learn_agent` — for the system agent user, but this is not a user-facing role.)
-6. **Certificates or badges** — No completion rewards.
+6. **Certificates or badges** — No completion rewards beyond the generated `completion_message` and portfolio framing. Actual certificate generation belongs to a companion plugin.
 7. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
 8. **Multi-site support** — Single-site only for v1.
 9. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
@@ -1200,13 +1475,15 @@ These are intentionally excluded from 1111 Learn Creator:
 A planned companion plugin will add:
 
 - Learner-facing course navigation and progress tracking
-- AI-powered activity grading (using the `scoring_rubric` and `mastery_criteria` already generated by this plugin)
-- Learner profiles with adaptive content
+- **AI-powered activity grading** — using the `scoring_rubric`, `mastery_criteria`, and `portfolio_rubric` already generated by this plugin to evaluate actual learner submissions (following the learn-extension's Activity Assessment Agent pattern: score 0.0–1.0, recommendation advance/revise/continue, strengths, improvements)
+- **Learner profiles** with adaptive content (following the learn-extension's Learner Profile Agent pattern: monotonically growing profile with strengths, weaknesses, pacing, preferences)
+- **XP tracking** — learners earn the `xp_value` defined on each activity/assessment when they complete it, with milestone celebrations
+- **Portfolio presentation** — learners view their accumulated work product with contribution timeline (following the learn-extension's Work Detail "build timeline" view)
 - Enrollment and access control
 - Analytics dashboard
-- Integration with the `learn` CPT, `course` taxonomy, and lesson meta created by this plugin
+- Integration with the `learn` CPT, `course` taxonomy, `lesson_group` taxonomy, and all structured meta created by this plugin
 
-The Learn Creator plugin is designed so the Administrator plugin can build on top of its data structures without modifications. Specifically, `_1111_mastery_criteria`, `_1111_activity`, and `_1111_key_takeaways` are stored as structured meta precisely so the Administrator plugin can use them for grading and progression.
+The Learn Creator plugin is designed so the Administrator plugin can build on top of its data structures without modifications. Specifically: `_1111_mastery_criteria`, `_1111_activity` (including `scoring_rubric`, `portfolio_contribution`, `xp_value`, `milestone`), `_1111_key_takeaways`, `_1111_assessment` (including `portfolio_rubric`, `scoring_guide`), and `_1111_work_product` are all stored as structured meta precisely so the Administrator plugin can use them for grading, XP tracking, portfolio display, and progression.
 
 ---
 
@@ -1256,12 +1533,14 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 - [ ] Prompt file loader (reads `prompts/*.md`)
 - [ ] JSON parser (handles markdown fencing, extracts JSON from response)
 - [ ] Validation functions for each agent's output schema
-- [ ] Orchestrator class wiring the four-agent pipeline
-- [ ] Write all four prompt files:
-  - [ ] `prompts/course-describer.md`
-  - [ ] `prompts/lesson-planner.md`
-  - [ ] `prompts/lesson-writer.md`
-  - [ ] `prompts/activity-creator.md`
+- [ ] Orchestrator class wiring the six-agent pipeline
+- [ ] Write all six prompt files:
+  - [ ] `prompts/course-describer.md` (narrative + work product)
+  - [ ] `prompts/lesson-planner.md` (backward design + activity types)
+  - [ ] `prompts/lesson-writer.md` (lesson content)
+  - [ ] `prompts/activity-creator.md` (portfolio activity + gamification)
+  - [ ] `prompts/activity-reviewer.md` (quality gate)
+  - [ ] `prompts/assessment-creator.md` (summative portfolio assessment)
 
 ### Phase 3: Admin Dashboard
 - [ ] Dashboard page registration and menu setup
@@ -1274,14 +1553,17 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 ### Phase 4: Content Generation Pipeline
 - [ ] Wire dashboard form → orchestrator → agents
-- [ ] Phase 0: Course Describer → create taxonomy term with narrative + titles
-- [ ] Per-objective loop: Planner → Writer → Activity Creator → create draft posts
+- [ ] Phase 0: Course Describer → create taxonomy term with narrative + titles + work product
+- [ ] Per-objective loop: Planner → Writer → Activity Creator → Activity Reviewer → create draft posts
+- [ ] Activity Reviewer loop: if `revision_needed`, send suggestions to Activity Creator for one retry
 - [ ] Create `lesson_group` tag per objective, assign all lessons from same plan
 - [ ] Set post author to 1111 Agent user on all generated posts
 - [ ] Markdown-to-block conversion for `post_content`
-- [ ] Store all structured meta (mastery criteria, activity, takeaways)
+- [ ] Store all structured meta (mastery criteria, activity, gamification, portfolio contribution, takeaways)
 - [ ] Store lesson plan on `lesson_group` term meta (not post meta)
 - [ ] Support multi-lesson plans (lessons_per_objective > 1)
+- [ ] Phase Final: Assessment Creator → create assessment draft post with portfolio rubric
+- [ ] Calculate and store total course XP on course term meta
 - [ ] Incremental recovery: skip already-generated objectives on retry
 - [ ] Progress transients and polling responses
 
@@ -1290,8 +1572,9 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 - [ ] Server-side guard: `wp_insert_post_data` filter rejects content changes from non-agent users
 - [ ] Block editor notice: "This lesson was generated by 1111 Learn. Use the feedback panel..."
 - [ ] Sidebar panel via `registerPlugin` / `PluginSidebar`: lesson feedback textarea + regenerate button
-- [ ] Activity meta box below content: activity display + feedback textarea + regenerate button
-- [ ] Version indicators for lesson and activity regeneration counts
+- [ ] Sidebar panel for assessment post: assessment display + feedback textarea + regenerate button
+- [ ] Activity meta box below content: activity display with type badge, XP, milestone, portfolio contribution, reviewer verdict, feedback textarea + regenerate button
+- [ ] Version indicators for lesson, activity, and assessment regeneration counts
 
 ### Phase 6: Feedback and Regeneration
 - [ ] Course taxonomy term edit screen: narrative display + feedback textarea + regenerate button
@@ -1324,16 +1607,19 @@ The Learn Creator plugin is designed so the Administrator plugin can build on to
 
 ## 20. Success Criteria
 
-1. An administrator can generate a complete course (1–4 lessons per objective, 1–8 objectives) from title + description + objectives in under 3 minutes.
+1. An administrator can generate a complete course (1–4 lessons per objective, 1–8 objectives, plus final assessment) from title + description + objectives in under 5 minutes.
 2. Generated lessons follow a visible narrative arc — they read as chapters in the same course, not disconnected topics.
 3. Each lesson's content clearly prepares the learner for the associated activity. Backward design is evident.
 4. Activities have specific, checkable rubric criteria — not vague "practice what you learned."
-5. All generated content is saved as standard WordPress draft posts authored by the 1111 Agent user — viewable in any theme, reviewable in the block editor, improvable through feedback-driven regeneration.
-6. The plugin installs with zero configuration beyond entering an API key.
-7. All admin UI passes WCAG 2.1 AA.
-8. Agent prompts live in Markdown files; merged PRs take effect immediately on the next generation without a plugin update.
-9. A failed generation can be retried without losing already-generated lessons.
-10. Administrators cannot directly edit generated post content — they provide feedback that triggers regeneration, and the output visibly improves with each feedback cycle.
-11. The block editor shows generated content as read-only with a clear feedback panel in the sidebar and activity feedback in a meta box below content.
-12. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
-11. Prompt quality measurably improves over time: validation failure rates decrease, retry rates decrease, and the percentage of generated fields that admins edit before publishing decreases.
+5. Every activity contributes to a single portfolio work product. The final assessment asks the learner to finalize and present that work product. A learner completing the course has a tangible artifact they can show to others.
+6. Activities follow a clear progression (`explore` → `apply` → `create` → `final`) with increasing XP values and achievement milestones that reflect genuine learning progress.
+7. The Activity Reviewer catches rubric-mastery misalignment before content reaches the admin — measurably reducing the need for admin feedback on activities.
+8. All generated content is saved as standard WordPress draft posts authored by the 1111 Agent user — viewable in any theme, reviewable in the block editor, improvable through feedback-driven regeneration.
+9. The plugin installs with zero configuration beyond entering an API key.
+10. All admin UI passes WCAG 2.1 AA.
+11. Agent prompts live in Markdown files; merged PRs take effect immediately on the next generation without a plugin update.
+12. A failed generation can be retried without losing already-generated lessons.
+13. Administrators cannot directly edit generated post content — they provide feedback that triggers regeneration, and the output visibly improves with each feedback cycle.
+14. The block editor shows generated content as read-only with a clear feedback panel in the sidebar and activity/assessment feedback in meta boxes.
+15. Telemetry flows from opted-in installations to learn-service, and an AI agent can use that data to autonomously create PRs improving `prompts/*.md` — completing a full collect → analyze → propose → review → ship cycle without human initiation.
+16. Prompt quality measurably improves over time: validation failure rates decrease, retry rates decrease, and the percentage of generated content that admins request feedback on decreases.
