@@ -1,6 +1,6 @@
-# 1111 Learn Creator — Product Requirements Document
+# 1111 Learn — Product Requirements Document
 
-## WordPress Plugin for AI-Powered Course Content Creation
+## WordPress Plugin for AI-Powered Course Creation, Portfolio Building, and Assessment
 
 **Version:** 0.5.0-draft
 **Date:** 2026-03-09
@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-**1111 Learn Creator** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A seven-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
+**1111 Learn** is a WordPress plugin that adds a "Learn" custom post type, a "Courses" taxonomy, and a "Lesson Groups" tag taxonomy. An administrator enters a course title, description, and learning objectives into a dashboard interface. A seven-agent AI pipeline (powered by the Anthropic Claude API) then generates a cohesive course narrative, structured lesson plans, full lesson content, practice activities with gamification mechanics, and a summative assessment — all saved as WordPress posts authored by a dedicated system agent user and organized under the appropriate Course and Lesson Group taxonomy terms. Generated content is immutable by human users; administrators review output and provide feedback that triggers regeneration through the same agent pipeline.
 
 Every activity and the final assessment are designed as **portfolio artifacts** — concrete, demonstrable work products that the learner builds **within WordPress itself**. The learner isn't just "completing exercises" — they're creating real WordPress content (pages, posts, even entire sites) that proves what they can do. The plugin runs on a **WordPress Multisite** network: the administrator creates courses on the main site, and each learner gets their own subsite where they build their portfolio work product. An Activity Assessment Agent evaluates the learner's WordPress content against the generated rubrics and mastery criteria.
 
@@ -301,7 +301,7 @@ Multisite Network
 │   ├── learn CPT (lessons, activities, assessments)
 │   ├── course taxonomy
 │   ├── lesson_group taxonomy
-│   ├── 1111 Learn Creator admin UI
+│   ├── 1111 Learn admin UI
 │   └── Course content is generated and managed here
 │
 ├── Learner Subsite: learner-jane.example.com
@@ -948,8 +948,8 @@ Safety violations are never retried — the admin is shown an error and the gene
 ## 7. Plugin File Structure
 
 ```
-learned-wp-creator/
-├── 1111-learn-creator.php          Main plugin file (plugin header, bootstrap)
+1111-learn/
+├── 1111-learn.php                  Main plugin file (plugin header, bootstrap)
 ├── README.md                       Plugin readme (WordPress-style + GitHub)
 ├── CLAUDE.md                       AI coding assistant instructions
 ├── LICENSE                         GPL v2+
@@ -1660,10 +1660,10 @@ This mirrors [Rule #10 from the extension's CLAUDE.md](https://github.com/1111ph
 
 > **Note:** Telemetry, assessments, learner-submitted assessment grading, and multi-site are no longer non-goals — see Sections 4.7, 5.5–5.7, and 15.
 
-These are intentionally excluded from 1111 Learn Creator:
+These are intentionally excluded from 1111 Learn:
 
 1. **Learner profiles** — No tracking of individual learner preferences or adaptive personalization. (The plugin tracks submissions and assessment results per learner, but does not build a learner profile with strengths, weaknesses, or pacing data — that belongs to the Administrator companion plugin.)
-2. **Enrollment / access restrictions** — No learner enrollment workflow or content gating. Subsite provisioning (Section 4.7.3) is handled by the companion Administrator plugin or manual network admin setup. The Creator plugin assumes subsites exist.
+2. **Enrollment / access restrictions** — No learner enrollment workflow or content gating. Subsite provisioning (Section 4.7.3) is handled by the companion Administrator plugin or manual network admin setup. The Learn plugin assumes subsites exist.
 3. **Certificates or badges** — No completion rewards beyond the generated `completion_message` and portfolio framing. Actual certificate generation belongs to a companion plugin.
 4. **LMS integration** — No direct integration with LearnDash, LifterLMS, etc. (but generated posts are compatible).
 5. **Internationalization** — English only for v1 (all strings use `__()` / `_e()` for future translation readiness).
@@ -1675,19 +1675,19 @@ These are intentionally excluded from 1111 Learn Creator:
 
 ## 17. Future: 1111 Learn Administrator (Companion Plugin)
 
-With learner assessment grading, WordPress-native portfolio creation, and Multisite now part of the Creator plugin, the Administrator companion plugin focuses on the **learner experience layer**:
+With learner assessment grading, WordPress-native portfolio creation, and Multisite now part of the Learn plugin, the Administrator companion plugin focuses on the **learner experience layer**:
 
 - **Learner-facing course navigation** — browse courses, view lesson sequence, track which activities are completed/pending
 - **Progress tracking** — completion status per lesson, per activity, per course. Visual progress bars and dashboards.
 - **Learner profiles** with adaptive content (following the learn-extension's Learner Profile Agent pattern: monotonically growing profile with strengths, weaknesses, pacing, preferences)
-- **Cumulative XP tracking** — learners earn the `xp_value` defined on each activity/assessment when they complete it (based on Creator's assessment scores), with milestone celebrations and leaderboards
+- **Cumulative XP tracking** — learners earn the `xp_value` defined on each activity/assessment when they complete it (based on Learn's assessment scores), with milestone celebrations and leaderboards
 - **Portfolio presentation** — learners view their accumulated WordPress content with a contribution timeline (following the learn-extension's Work Detail "build timeline" view). Since portfolio items are WordPress pages/posts on the learner's subsite, the Administrator plugin provides a curated portfolio view across all courses.
 - **Subsite provisioning** — automated creation of learner subsites on the Multisite network when a learner enrolls in their first course
 - **Enrollment and access control** — course enrollment, content gating, learner onboarding
 - **Analytics dashboard** — admin-facing analytics: completion rates, average assessment scores, time-to-completion, common feedback patterns
 - **Certificates** — generate completion certificates based on course completion and assessment scores
 
-The Creator plugin is designed so the Administrator plugin can build on top of its data structures without modifications. The Creator stores everything the Administrator needs: `_1111_mastery_criteria`, `_1111_activity` (including `scoring_rubric`, `portfolio_contribution`, `xp_value`, `milestone`), `_1111_key_takeaways`, `_1111_assessment` (including `portfolio_rubric`, `scoring_guide`), `_1111_work_product`, and the `_1111_learn_submissions` table with per-learner assessment results — all structured for the Administrator to consume for progress tracking, XP accumulation, portfolio display, and learner profiles.
+The Learn plugin is designed so the Administrator plugin can build on top of its data structures without modifications. The Learn plugin stores everything the Administrator needs: `_1111_mastery_criteria`, `_1111_activity` (including `scoring_rubric`, `portfolio_contribution`, `xp_value`, `milestone`), `_1111_key_takeaways`, `_1111_assessment` (including `portfolio_rubric`, `scoring_guide`), `_1111_work_product`, and the `_1111_learn_submissions` table with per-learner assessment results — all structured for the Administrator to consume for progress tracking, XP accumulation, portfolio display, and learner profiles.
 
 ---
 
@@ -1697,7 +1697,7 @@ The Creator plugin is designed so the Administrator plugin can build on top of i
 2. **WordPress coding standards.** Follow WordPress PHP and JavaScript coding standards.
 3. **Minimum requirements:** WordPress 6.7+, PHP 8.0+, **WordPress Multisite** network. The plugin targets the **latest WordPress version** and relies on block editor APIs (block locking, PluginSidebar, SlotFill) that are stable in 6.7+. The plugin must be network activated on a Multisite installation. Do not add fallbacks for the classic editor — the block editor is required.
 4. **Block editor first.** All post-editor UI (feedback panels, content locking, activity meta box) is built for the block editor using the `@wordpress/` JS packages bundled with WordPress. Taxonomy term editors use standard WordPress admin UI enhanced with custom meta boxes.
-5. **Prefix everything.** `_1111_learn_` for meta/options, `Learn_Creator_` for classes.
+5. **Prefix everything.** `_1111_learn_` for meta/options, `Learn_` for classes.
 6. **No Composer.** API client uses `wp_remote_post()`.
 7. **Hooks and filters** for extensibility:
    - `1111_learn_before_describe` — filter course data before Course Describer
