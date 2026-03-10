@@ -1,0 +1,23 @@
+.learn-learner-panel,
+.learn-course-landing {
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	padding: 16px;
+	margin: 16px 0;
+	background: #fff;
+}
+
+.learn-course-list,
+.learn-lesson-list {
+	padding-left: 18px;
+}
+
+.learn-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: #1d4ed8;
+	color: #fff;
+	font-size: 12px;
+	margin-left: 6px;
+}

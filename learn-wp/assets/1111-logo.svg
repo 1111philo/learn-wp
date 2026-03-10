@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="1111 logo">
+  <rect width="128" height="128" rx="16" fill="#111827"/>
+  <g fill="#f9fafb">
+    <rect x="18" y="24" width="12" height="80"/>
+    <rect x="42" y="24" width="12" height="80"/>
+    <rect x="66" y="24" width="12" height="80"/>
+    <rect x="90" y="24" width="12" height="80"/>
+  </g>
+</svg>

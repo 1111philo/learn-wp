@@ -1,0 +1,23 @@
+.learn-admin-wrap {
+	max-width: 960px;
+}
+
+.learn-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 20px;
+	margin: 18px 0;
+}
+
+.learn-card label {
+	display: block;
+	font-weight: 600;
+	margin-top: 10px;
+}
+
+.learn-card input,
+.learn-card textarea {
+	width: 100%;
+	margin-top: 6px;
+}

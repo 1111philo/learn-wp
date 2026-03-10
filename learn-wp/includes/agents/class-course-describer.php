@@ -1,0 +1,7 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+class Learn_Course_Describer extends Learn_Agent_Base {
+	protected function prompt_slug() { return 'course-describer'; }
+	protected function validator_slug() { return 'course-describer'; }
+	protected function model() { return 'claude-haiku-4-5-20251001'; }
+}
