@@ -121,6 +121,7 @@ function _1111_learn_init() {
 	$post_type    = new Learn_Post_Type();
 	$agent_user   = Learn_Agent_User::get_instance();
 	$settings     = new Learn_Settings();
+	$settings->init();
 	$api_client   = new Learn_API_Client();
 	$prompt       = new Learn_Prompt_Loader();
 	$validator    = new Learn_Validator();
@@ -128,7 +129,8 @@ function _1111_learn_init() {
 	$content_lock = new Learn_Content_Lock();
 	$feedback     = new Learn_Feedback();
 	$assessment   = new Learn_Learner_Assessment();
-	$admin_page   = new Learn_Admin_Page();
+	$admin_page   = new Learn_Admin_Page( $settings );
+	$admin_page->init();
 	$learner      = new Learn_Learner_Panel();
 	$registration = new Learn_Registration();
 	$content_copy = new Learn_Content_Copy();
