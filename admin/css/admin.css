@@ -1,0 +1,101 @@
+/* Admin Dashboard and Stepper Styling */
+
+#learn-dashboard .card {
+	max-width: 800px;
+	margin-top: 20px;
+	padding: 20px;
+}
+
+#learn-dashboard .objective-row {
+	margin-bottom: 10px;
+}
+
+#learn-dashboard #add-objective {
+	margin-top: 5px;
+}
+
+/* Stepper UI */
+.stepper-progress {
+	margin-top: 30px;
+	position: relative;
+}
+
+.stepper-item {
+	display: flex;
+	align-items: center;
+	margin-bottom: 15px;
+	padding-left: 30px;
+	position: relative;
+}
+
+.stepper-item::before {
+	content: '';
+	position: absolute;
+	left: 10px;
+	top: 0;
+	bottom: -15px;
+	width: 2px;
+	background: #ddd;
+}
+
+.stepper-item:last-child::before {
+	display: none;
+}
+
+.stepper-icon {
+	position: absolute;
+	left: 0;
+	width: 20px;
+	height: 20px;
+	background: #fff;
+	border: 2px solid #ddd;
+	border-radius: 50%;
+	z-index: 1;
+}
+
+.stepper-item.complete .stepper-icon {
+	background: #46b450;
+	border-color: #46b450;
+}
+
+.stepper-item.complete .stepper-icon::after {
+	content: '\f15e';
+	font-family: dashicons;
+	color: #fff;
+	font-size: 14px;
+	line-height: 20px;
+	text-align: center;
+	display: block;
+}
+
+.stepper-item.active .stepper-icon {
+	border-color: #007cba;
+	animation: stepper-pulse 1.5s infinite;
+}
+
+.stepper-item.active .stepper-label {
+	font-weight: 600;
+	color: #007cba;
+}
+
+@keyframes stepper-pulse {
+	0% { box-shadow: 0 0 0 0 rgba(0, 124, 186, 0.4); }
+	70% { box-shadow: 0 0 0 10px rgba(0, 124, 186, 0); }
+	100% { box-shadow: 0 0 0 0 rgba(0, 124, 186, 0); }
+}
+
+#stepper-status-message {
+	margin-top: 20px;
+	padding: 10px;
+	border-radius: 4px;
+}
+
+#stepper-status-message.success {
+	background: #e7f6e8;
+	border: 1px solid #46b450;
+}
+
+#stepper-status-message.error {
+	background: #fcf0f1;
+	border: 1px solid #dc3232;
+}

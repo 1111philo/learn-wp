@@ -1,0 +1,15 @@
+/* Block Editor Styling */
+
+.learn-sidebar-feedback {
+    padding: 16px;
+}
+
+.learn-sidebar-feedback textarea {
+    min-height: 120px;
+}
+
+/* Hide some UI for non-agents on locked posts */
+.post-type-learn.template-lock-all .editor-post-publish-button__button {
+    pointer-events: none;
+    opacity: 0.5;
+}
