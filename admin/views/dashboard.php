@@ -9,6 +9,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( ! function_exists( 'learn_status_label' ) ) {
+	/**
+	 * Get human-readable status label.
+	 *
+	 * @param string $status Status key.
+	 * @return string Label.
+	 */
+	function learn_status_label( $status ) {
+		$labels = array(
+			'generating' => __( 'Generating', 'learn' ),
+			'complete'   => __( 'Draft', 'learn' ),
+			'published'  => __( 'Published', 'learn' ),
+			'failed'     => __( 'Failed', 'learn' ),
+		);
+		return isset( $labels[ $status ] ) ? $labels[ $status ] : ucfirst( $status );
+	}
+}
+
 $courses = Learn_Admin_Page::get_courses_list();
 $review_term_id = isset( $_GET['review'] ) ? absint( $_GET['review'] ) : 0;
 
@@ -170,23 +188,3 @@ if ( $review_term_id ) {
 	</div>
 	<?php endif; ?>
 </div>
-<?php
-
-if ( ! function_exists( 'learn_status_label' ) ) {
-	/**
-	 * Get human-readable status label.
-	 *
-	 * @param string $status Status key.
-	 * @return string Label.
-	 */
-	function learn_status_label( $status ) {
-		$labels = array(
-			'generating' => __( 'Generating', 'learn' ),
-			'complete'   => __( 'Draft', 'learn' ),
-			'published'  => __( 'Published', 'learn' ),
-			'failed'     => __( 'Failed', 'learn' ),
-		);
-		return isset( $labels[ $status ] ) ? $labels[ $status ] : ucfirst( $status );
-	}
-}
-?>
