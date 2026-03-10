@@ -1,0 +1,388 @@
+/**
+ * 1111 Learn — Public Frontend Styles
+ *
+ * Minimal, semantic styles for learner-facing pages.
+ * Designed to work with any theme.
+ *
+ * @package Learn
+ */
+
+/* ==========================================================================
+   Course Landing
+   ========================================================================== */
+
+.learn-course-landing {
+	max-width: 720px;
+	margin: 2em auto;
+	padding: 0 1em;
+}
+
+.learn-course-landing h1 {
+	margin-bottom: 0.5em;
+}
+
+.learn-course-landing .learn-course-description {
+	font-size: 1.1em;
+	line-height: 1.6;
+	color: #333;
+	margin-bottom: 1.5em;
+}
+
+.learn-course-landing .learn-course-objectives {
+	list-style: disc;
+	padding-left: 1.5em;
+	margin-bottom: 2em;
+}
+
+.learn-course-landing .learn-course-objectives li {
+	margin-bottom: 0.5em;
+	line-height: 1.5;
+}
+
+/* ==========================================================================
+   Lesson Navigation
+   ========================================================================== */
+
+.learn-lesson-nav {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 1em 0;
+	margin: 2em 0 1em;
+	border-top: 1px solid #ddd;
+	border-bottom: 1px solid #ddd;
+}
+
+.learn-lesson-nav a {
+	text-decoration: none;
+	color: #0073aa;
+	font-size: 0.9em;
+	padding: 0.4em 0.8em;
+	border-radius: 3px;
+	transition: background-color 0.15s, color 0.15s;
+}
+
+.learn-lesson-nav a:hover,
+.learn-lesson-nav a:focus {
+	background: #0073aa;
+	color: #fff;
+}
+
+.learn-lesson-nav a:focus-visible {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+.learn-lesson-nav .learn-breadcrumb {
+	font-size: 0.85em;
+	color: #666;
+}
+
+.learn-lesson-nav .learn-breadcrumb a {
+	color: #666;
+	padding: 0;
+}
+
+.learn-lesson-nav .learn-breadcrumb a:hover,
+.learn-lesson-nav .learn-breadcrumb a:focus {
+	color: #0073aa;
+	background: none;
+}
+
+/* ==========================================================================
+   Progress Indicator
+   ========================================================================== */
+
+.learn-progress-indicator {
+	margin: 1.5em 0;
+}
+
+.learn-progress-indicator__label {
+	font-size: 0.85em;
+	color: #555;
+	margin-bottom: 0.4em;
+}
+
+.learn-progress-indicator__bar {
+	height: 6px;
+	background: #e0e0e0;
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.learn-progress-indicator__fill {
+	height: 100%;
+	background: #0073aa;
+	border-radius: 3px;
+	transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   Activity Section
+   ========================================================================== */
+
+.learn-activity-section {
+	margin: 2em 0;
+	padding: 1.5em;
+	background: #f9f9f9;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+}
+
+.learn-activity-section h3 {
+	margin-top: 0;
+	margin-bottom: 0.8em;
+}
+
+.learn-activity-section .learn-activity-instructions {
+	line-height: 1.6;
+	margin-bottom: 1em;
+}
+
+.learn-activity-section .learn-activity-hints {
+	margin: 1em 0;
+}
+
+.learn-activity-section .learn-hints-toggle {
+	background: none;
+	border: none;
+	color: #0073aa;
+	cursor: pointer;
+	font-size: 0.9em;
+	padding: 0;
+	text-decoration: underline;
+}
+
+.learn-activity-section .learn-hints-toggle:hover,
+.learn-activity-section .learn-hints-toggle:focus {
+	color: #005177;
+}
+
+.learn-activity-section .learn-hints-toggle:focus-visible {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+.learn-activity-section .learn-hints-content {
+	display: none;
+	margin-top: 0.5em;
+	padding: 1em;
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 3px;
+	font-size: 0.9em;
+}
+
+.learn-activity-section .learn-hints-content.is-visible {
+	display: block;
+}
+
+.learn-activity-section .learn-submit-activity {
+	margin-top: 1em;
+}
+
+/* ==========================================================================
+   Assessment Results
+   ========================================================================== */
+
+.learn-assessment-results {
+	margin: 1.5em 0;
+	padding: 1.5em;
+	border-radius: 4px;
+}
+
+.learn-assessment-results.is-pass {
+	background: #edfaef;
+	border: 1px solid #b8e6be;
+}
+
+.learn-assessment-results.is-fail {
+	background: #fcf0f1;
+	border: 1px solid #f0b8b8;
+}
+
+.learn-assessment-results h4 {
+	margin-top: 0;
+	margin-bottom: 0.5em;
+}
+
+.learn-assessment-results .learn-result-score {
+	font-size: 1.1em;
+	font-weight: 600;
+	margin-bottom: 0.8em;
+}
+
+.learn-assessment-results .learn-result-details {
+	line-height: 1.6;
+	font-size: 0.95em;
+}
+
+/* ==========================================================================
+   Registration Form
+   ========================================================================== */
+
+.learn-registration-form {
+	max-width: 480px;
+	margin: 2em auto;
+	padding: 2em;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.learn-registration-form h2 {
+	margin-top: 0;
+	margin-bottom: 1em;
+}
+
+.learn-registration-form label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.3em;
+	font-size: 0.9em;
+}
+
+.learn-registration-form input[type="text"],
+.learn-registration-form input[type="email"],
+.learn-registration-form input[type="password"] {
+	display: block;
+	width: 100%;
+	padding: 0.5em 0.7em;
+	margin-bottom: 1em;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	font-size: 1em;
+}
+
+.learn-registration-form input:focus {
+	border-color: #0073aa;
+	box-shadow: 0 0 0 1px #0073aa;
+	outline: none;
+}
+
+.learn-registration-form input:focus-visible {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+.learn-registration-form button[type="submit"] {
+	display: inline-block;
+	padding: 0.6em 1.5em;
+	background: #0073aa;
+	color: #fff;
+	border: none;
+	border-radius: 3px;
+	font-size: 1em;
+	cursor: pointer;
+	transition: background-color 0.15s;
+}
+
+.learn-registration-form button[type="submit"]:hover,
+.learn-registration-form button[type="submit"]:focus {
+	background: #005177;
+}
+
+.learn-registration-form button[type="submit"]:focus-visible {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+.learn-registration-form .learn-form-error {
+	color: #d63638;
+	font-size: 0.85em;
+	margin-top: -0.5em;
+	margin-bottom: 1em;
+}
+
+/* ==========================================================================
+   Course Catalog (Frontend)
+   ========================================================================== */
+
+.learn-course-catalog {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 1.5em;
+	margin: 2em 0;
+}
+
+.learn-catalog-card {
+	padding: 1.5em;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	transition: box-shadow 0.15s;
+}
+
+.learn-catalog-card:hover {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.learn-catalog-card h3 {
+	margin: 0 0 0.5em;
+	font-size: 1.1em;
+}
+
+.learn-catalog-card p {
+	color: #555;
+	font-size: 0.9em;
+	line-height: 1.5;
+	margin: 0 0 1em;
+}
+
+.learn-catalog-card button,
+.learn-catalog-card a.button {
+	display: inline-block;
+	padding: 0.5em 1.2em;
+	background: #0073aa;
+	color: #fff;
+	border: none;
+	border-radius: 3px;
+	font-size: 0.9em;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.learn-catalog-card button:hover,
+.learn-catalog-card button:focus,
+.learn-catalog-card a.button:hover,
+.learn-catalog-card a.button:focus {
+	background: #005177;
+}
+
+.learn-catalog-card button:focus-visible,
+.learn-catalog-card a.button:focus-visible {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Focus & Accessibility
+   ========================================================================== */
+
+.learn-course-landing :focus-visible,
+.learn-activity-section :focus-visible,
+.learn-registration-form :focus-visible {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media screen and (max-width: 600px) {
+	.learn-lesson-nav {
+		flex-direction: column;
+		gap: 0.5em;
+		text-align: center;
+	}
+
+	.learn-course-catalog {
+		grid-template-columns: 1fr;
+	}
+
+	.learn-registration-form {
+		margin: 1em;
+		padding: 1.5em;
+	}
+}

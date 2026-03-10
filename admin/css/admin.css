@@ -1,0 +1,421 @@
+/**
+ * 1111 Learn — Admin Styles
+ *
+ * Follows WordPress admin design patterns.
+ *
+ * @package Learn
+ */
+
+/* ==========================================================================
+   Dashboard
+   ========================================================================== */
+
+.learn-dashboard {
+	max-width: 800px;
+	margin: 20px 0;
+}
+
+.learn-dashboard h2 {
+	font-size: 1.3em;
+	margin-bottom: 1em;
+}
+
+.learn-dashboard .form-table th {
+	width: 200px;
+}
+
+.learn-dashboard input[type="text"],
+.learn-dashboard textarea {
+	width: 100%;
+	max-width: 500px;
+}
+
+.learn-dashboard textarea {
+	min-height: 80px;
+	resize: vertical;
+}
+
+.learn-dashboard .submit {
+	margin-top: 1em;
+}
+
+/* ==========================================================================
+   Objectives Repeater
+   ========================================================================== */
+
+.learn-objectives-repeater {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.learn-objectives-repeater li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.learn-objectives-repeater input[type="text"] {
+	flex: 1;
+	max-width: 460px;
+}
+
+.learn-objectives-repeater .button-link-delete {
+	color: #b32d2e;
+	text-decoration: none;
+	cursor: pointer;
+	padding: 4px 8px;
+	border: none;
+	background: none;
+	font-size: 13px;
+}
+
+.learn-objectives-repeater .button-link-delete:hover,
+.learn-objectives-repeater .button-link-delete:focus {
+	color: #a00;
+	text-decoration: underline;
+}
+
+.learn-objectives-repeater .button-link-delete:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+.learn-add-objective {
+	margin-top: 4px;
+}
+
+/* ==========================================================================
+   Progress Stepper
+   ========================================================================== */
+
+.learn-progress-stepper {
+	margin: 20px 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: step;
+}
+
+.learn-stepper-step {
+	position: relative;
+	padding: 12px 16px 12px 48px;
+	margin-bottom: 4px;
+	background: #f6f7f7;
+	border-left: 4px solid #c3c4c7;
+	border-radius: 2px;
+	font-size: 13px;
+	line-height: 1.5;
+	transition: background-color 0.2s, border-color 0.2s;
+}
+
+.learn-stepper-step::before {
+	counter-increment: step;
+	content: counter(step);
+	position: absolute;
+	left: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: #c3c4c7;
+	color: #fff;
+	text-align: center;
+	line-height: 24px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+/* Pending */
+.learn-stepper-step.is-pending {
+	color: #646970;
+}
+
+/* Active */
+.learn-stepper-step.is-active {
+	background: #f0f6fc;
+	border-left-color: #2271b1;
+	color: #1d2327;
+	font-weight: 500;
+}
+
+.learn-stepper-step.is-active::before {
+	background: #2271b1;
+}
+
+/* Complete */
+.learn-stepper-step.is-complete {
+	background: #edfaef;
+	border-left-color: #00a32a;
+	color: #1d2327;
+}
+
+.learn-stepper-step.is-complete::before {
+	background: #00a32a;
+	content: "\2713";
+}
+
+/* Error */
+.learn-stepper-step.is-error {
+	background: #fcf0f1;
+	border-left-color: #d63638;
+	color: #1d2327;
+}
+
+.learn-stepper-step.is-error::before {
+	background: #d63638;
+	content: "\2717";
+}
+
+/* ==========================================================================
+   Course Review Panel
+   ========================================================================== */
+
+.learn-course-review {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 2px;
+	padding: 16px 20px;
+	margin: 20px 0;
+}
+
+.learn-course-review h3 {
+	margin-top: 0;
+	font-size: 14px;
+}
+
+.learn-course-review .learn-review-section {
+	margin-bottom: 16px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.learn-course-review .learn-review-section:last-child {
+	margin-bottom: 0;
+	padding-bottom: 0;
+	border-bottom: none;
+}
+
+/* ==========================================================================
+   Activity Badges
+   ========================================================================== */
+
+.learn-activity-badge {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.6;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.learn-activity-badge--explore {
+	background: #e7f5ff;
+	color: #1862a8;
+}
+
+.learn-activity-badge--apply {
+	background: #edfaef;
+	color: #1a7a2e;
+}
+
+.learn-activity-badge--create {
+	background: #f3ecfe;
+	color: #6b21a8;
+}
+
+.learn-activity-badge--final {
+	background: #fef9e7;
+	color: #92600e;
+}
+
+/* ==========================================================================
+   Feedback Box
+   ========================================================================== */
+
+.learn-feedback-box {
+	margin: 16px 0;
+}
+
+.learn-feedback-box label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+	font-size: 13px;
+}
+
+.learn-feedback-box textarea {
+	width: 100%;
+	min-height: 100px;
+	resize: vertical;
+}
+
+.learn-feedback-box .button {
+	margin-top: 8px;
+}
+
+/* ==========================================================================
+   Learner Panel
+   ========================================================================== */
+
+.learn-learner-panel {
+	max-width: 800px;
+}
+
+.learn-learner-panel h2 {
+	font-size: 1.3em;
+	margin-bottom: 0.8em;
+}
+
+/* ==========================================================================
+   Course Cards
+   ========================================================================== */
+
+.learn-course-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 16px;
+	margin: 16px 0;
+}
+
+.learn-course-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 16px 20px;
+	transition: box-shadow 0.15s;
+}
+
+.learn-course-card:hover {
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.learn-course-card h3 {
+	margin: 0 0 8px;
+	font-size: 14px;
+}
+
+.learn-course-card p {
+	color: #646970;
+	font-size: 13px;
+	margin: 0 0 12px;
+}
+
+.learn-course-card .button {
+	width: 100%;
+	text-align: center;
+}
+
+/* ==========================================================================
+   Progress Bar
+   ========================================================================== */
+
+.learn-progress-bar {
+	height: 8px;
+	background: #dcdcde;
+	border-radius: 4px;
+	overflow: hidden;
+	margin: 8px 0;
+}
+
+.learn-progress-bar__fill {
+	height: 100%;
+	background: #2271b1;
+	border-radius: 4px;
+	transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   Assessment Result
+   ========================================================================== */
+
+.learn-assessment-result {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 2px;
+	padding: 16px 20px;
+	margin: 16px 0;
+}
+
+.learn-assessment-result h3 {
+	margin-top: 0;
+	font-size: 14px;
+}
+
+.learn-assessment-result .learn-result-pass {
+	color: #00a32a;
+	font-weight: 600;
+}
+
+.learn-assessment-result .learn-result-fail {
+	color: #d63638;
+	font-weight: 600;
+}
+
+.learn-assessment-result .learn-result-feedback {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid #f0f0f1;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+/* ==========================================================================
+   Error Messages
+   ========================================================================== */
+
+.learn-field-error {
+	color: #d63638;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.learn-field-error[role="alert"] {
+	font-weight: 500;
+}
+
+/* ==========================================================================
+   Focus Styles (Accessibility)
+   ========================================================================== */
+
+.learn-dashboard :focus-visible,
+.learn-course-review :focus-visible,
+.learn-learner-panel :focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Responsive (782px breakpoint per WordPress admin)
+   ========================================================================== */
+
+@media screen and (min-width: 782px) {
+	.learn-dashboard .form-table th {
+		width: 200px;
+	}
+
+	.learn-course-cards {
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	}
+}
+
+@media screen and (max-width: 781px) {
+	.learn-objectives-repeater li {
+		flex-wrap: wrap;
+	}
+
+	.learn-objectives-repeater input[type="text"] {
+		max-width: 100%;
+	}
+
+	.learn-course-cards {
+		grid-template-columns: 1fr;
+	}
+
+	.learn-stepper-step {
+		padding-left: 40px;
+	}
+}
