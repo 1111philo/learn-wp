@@ -474,6 +474,10 @@
 }
 
 /* Publish dialog */
+.learn-dialog[hidden] {
+	display: none;
+}
+
 .learn-dialog {
 	position: fixed;
 	top: 0;
